@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { 
   FileUp, 
@@ -27,7 +28,13 @@ import {
   Linkedin,
   Mail,
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  CreditCard,
+  Eye,
+  Settings,
+  Download,
+  Cpu
 } from 'lucide-react';
 import { Industry, AppState, AnalysisResult, Region } from './types';
 import { analyzeResume } from './services/geminiService';
@@ -58,6 +65,30 @@ const FuturisticHeader = ({ title, subtitle }: { title: string, subtitle: string
     <p className="text-[10px] text-cyan-500/80 font-mono font-bold uppercase tracking-[0.3em] mt-1.5">{subtitle}</p>
   </div>
 );
+
+const LockedSectionWrapper = ({ isUnlocked, children, onLockClick, lockLabel = "Premium Feature" }: { isUnlocked: boolean, children: React.ReactNode, onLockClick?: () => void, lockLabel?: string }) => {
+  if (isUnlocked) return <div className="animate-in fade-in duration-700">{children}</div>;
+  
+  return (
+    <div 
+      className="relative group/locked cursor-pointer overflow-hidden rounded-2xl" 
+      onClick={onLockClick}
+    >
+      <div className="blur-md grayscale select-none pointer-events-none opacity-30 transition-all duration-700 group-hover/locked:opacity-50">
+        {children}
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-20 group-hover/locked:scale-105 transition-transform duration-500">
+        <div className="w-12 h-12 bg-cyan-500/10 rounded-full flex items-center justify-center border border-cyan-500/20 mb-4 animate-pulse shadow-[0_0_15px_rgba(34,211,238,0.15)]">
+          <Lock className="w-6 h-6 text-cyan-400" />
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-500 drop-shadow-md">
+          {lockLabel} Locked
+        </span>
+        <span className="mt-2 text-[8px] font-bold text-white/40 uppercase tracking-widest opacity-0 group-hover/locked:opacity-100 transition-opacity">Click to Unlock</span>
+      </div>
+    </div>
+  );
+};
 
 const ScoreRing = ({ score, label, color = "stroke-blue-500", size = "w-20 h-20 md:w-24 md:h-24" }: { score: number, label: string, color?: string, size?: string }) => {
   const radius = 36;
@@ -106,7 +137,7 @@ const ATSMeter = ({ score }: { score: number }) => (
   </div>
 );
 
-const BulletCritiqueRow = ({ item, index }: { item: any, index: number, key?: any }) => {
+const BulletCritiqueRow = ({ item, index, isUnlocked, onLockClick }: { item: any, index: number, isUnlocked: boolean, onLockClick: () => void, key?: any }) => {
   const [showRewrites, setShowRewrites] = useState(false);
   
   return (
@@ -118,51 +149,53 @@ const BulletCritiqueRow = ({ item, index }: { item: any, index: number, key?: an
         <div className="flex-1">
           <p className="text-base md:text-lg text-gray-100 font-medium leading-relaxed italic mb-6 group-hover:text-white transition-colors">"{item.original}"</p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
-            <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/5 relative overflow-hidden group/audit hover:border-cyan-500/30 transition-all duration-500">
-              <div className="flex items-center gap-3 mb-3 text-cyan-400">
-                <ShieldAlert className="w-5 h-5 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Critical Logic Audit</span>
-              </div>
-              <p className="text-xs text-gray-400 leading-relaxed italic group-hover/audit:text-slate-300 transition-colors">{item.critique}</p>
-            </div>
-            <div className="space-y-4">
-              <div className="bg-red-950/10 border border-red-500/10 px-5 py-3 rounded-2xl flex items-center justify-between hover:bg-red-900/10 transition-colors">
-                <span className="text-[10px] text-red-500 font-black uppercase tracking-widest">Weakness</span>
-                <span className="text-[11px] text-gray-300 font-bold truncate ml-3">{item.weakness}</span>
-              </div>
-              <div className="bg-indigo-950/10 border border-indigo-500/10 px-5 py-3 rounded-2xl flex items-center justify-between hover:bg-indigo-900/10 transition-colors">
-                <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Signal Gap</span>
-                <span className="text-[11px] text-gray-300 font-bold truncate ml-3">{item.soWhatGap}</span>
-              </div>
-            </div>
-          </div>
-          
-          <button 
-            onClick={() => setShowRewrites(!showRewrites)}
-            className={`flex items-center gap-4 px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.4em] transition-all relative overflow-hidden group/rev ${
-              showRewrites ? 'bg-cyan-500 text-black shadow-2xl shadow-cyan-500/40' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <Zap className={`w-4 h-4 transition-transform duration-500 group-hover/rev:scale-125 ${showRewrites ? 'fill-black animate-pulse' : ''}`} />
-            {showRewrites ? 'Hide Rewrites' : 'VIEW REWRITES'}
-          </button>
-
-          {showRewrites && (
-            <div className="mt-6 space-y-5 animate-in slide-in-from-top-6 duration-700 stagger-children">
-               {item.rewrites?.map((rw: string, i: number) => (
-                <div key={i} className="bg-cyan-500/5 border border-cyan-500/10 p-5 rounded-[2rem] relative group/rw hover:bg-cyan-500/10 transition-all duration-500">
-                   <div className="flex justify-between items-center mb-3">
-                     <span className="text-[10px] text-cyan-400 font-black uppercase tracking-widest flex items-center gap-2">
-                       <CheckCircle2 className="w-4 h-4" /> REWRITE OPTION 0{i+1}
-                     </span>
-                     <span className="text-[9px] px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full font-black italic tracking-tighter">ELITE KPI</span>
-                   </div>
-                   <p className="text-sm md:text-base text-gray-100 leading-relaxed italic font-medium">"{rw}"</p>
+          <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Impact Audit" onLockClick={onLockClick}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
+              <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/5 relative overflow-hidden group/audit hover:border-cyan-500/30 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-3 text-cyan-400">
+                  <ShieldAlert className="w-5 h-5 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em]">Critical Logic Audit</span>
                 </div>
-              ))}
+                <p className="text-xs text-gray-400 leading-relaxed italic group-hover/audit:text-slate-300 transition-colors">{item.critique}</p>
+              </div>
+              <div className="space-y-4">
+                <div className="bg-red-950/10 border border-red-500/10 px-5 py-3 rounded-2xl flex items-center justify-between hover:bg-red-900/10 transition-colors">
+                  <span className="text-[10px] text-red-500 font-black uppercase tracking-widest">Weakness</span>
+                  <span className="text-[11px] text-gray-300 font-bold truncate ml-3">{item.weakness}</span>
+                </div>
+                <div className="bg-indigo-950/10 border border-indigo-500/10 px-5 py-3 rounded-2xl flex items-center justify-between hover:bg-indigo-900/10 transition-colors">
+                  <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Signal Gap</span>
+                  <span className="text-[11px] text-gray-300 font-bold truncate ml-3">{item.soWhatGap}</span>
+                </div>
+              </div>
             </div>
-          )}
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowRewrites(!showRewrites); }}
+              className={`flex items-center gap-4 px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.4em] transition-all relative overflow-hidden group/rev ${
+                showRewrites ? 'bg-cyan-500 text-black shadow-2xl shadow-cyan-500/40' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Zap className={`w-4 h-4 transition-transform duration-500 group-hover/rev:scale-125 ${showRewrites ? 'fill-black animate-pulse' : ''}`} />
+              {showRewrites ? 'Hide Rewrites' : 'VIEW REWRITES'}
+            </button>
+
+            {showRewrites && (
+              <div className="mt-6 space-y-5 animate-in slide-in-from-top-6 duration-700 stagger-children">
+                 {item.rewrites?.map((rw: string, i: number) => (
+                  <div key={i} className="bg-cyan-500/5 border border-cyan-500/10 p-5 rounded-[2rem] relative group/rw hover:bg-cyan-500/10 transition-all duration-500">
+                     <div className="flex justify-between items-center mb-3">
+                       <span className="text-[10px] text-cyan-400 font-black uppercase tracking-widest flex items-center gap-2">
+                         <CheckCircle2 className="w-4 h-4" /> REWRITE OPTION 0{i+1}
+                       </span>
+                       <span className="text-[9px] px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full font-black italic tracking-tighter">ELITE KPI</span>
+                     </div>
+                     <p className="text-sm md:text-base text-gray-100 leading-relaxed italic font-medium">"{rw}"</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </LockedSectionWrapper>
         </div>
       </div>
     </div>
@@ -261,12 +294,12 @@ const AdvancedHeatmapOverlay = ({ result }: { result: AnalysisResult }) => {
     const points: { x: number, y: number, score: number, id: string }[] = [];
     const sections = result.eyeTrackingHeatmap || [];
     
-    sections.forEach((s, idx) => {
-      const count = Math.ceil(s.attentionScore / 2) + 2;
+    sections.slice(0, 4).forEach((s, idx) => {
+      const count = Math.min(Math.ceil(s.attentionScore / 3) + 1, 3);
       for (let i = 0; i < count; i++) {
         points.push({
-          x: 10 + Math.random() * 80,
-          y: (idx * 25) + 5 + Math.random() * 15,
+          x: 20 + Math.random() * 60,
+          y: (idx * 25) + 10 + Math.random() * 10,
           score: s.attentionScore,
           id: `${idx}-${i}`
         });
@@ -281,12 +314,12 @@ const AdvancedHeatmapOverlay = ({ result }: { result: AnalysisResult }) => {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden rounded-md opacity-70 mix-blend-screen">
+    <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden rounded-md opacity-60 mix-blend-screen transition-opacity duration-1000">
       <div className="heatmap-scanner" />
       
       {gazePoints.map((p) => {
-        const color = p.score > 7 ? 'rgba(239, 68, 68, 0.4)' : p.score > 4 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 211, 238, 0.2)';
-        const size = 30 + (p.score * 8);
+        const color = p.score > 7 ? 'rgba(239, 68, 68, 0.3)' : p.score > 4 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 211, 238, 0.15)';
+        const size = 20 + (p.score * 6);
         return (
           <div 
             key={p.id}
@@ -298,19 +331,19 @@ const AdvancedHeatmapOverlay = ({ result }: { result: AnalysisResult }) => {
               height: `${size}px`,
               marginLeft: `-${size/2}px`,
               marginTop: `-${size/2}px`,
-              background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
-              boxShadow: `0 0 ${size/2}px ${color}`
+              background: `radial-gradient(circle, ${color} 0%, transparent 80%)`,
+              boxShadow: `0 0 ${size/3}px ${color}`
             }}
           />
         );
       })}
 
       {showPath && (
-        <svg className="absolute inset-0 w-full h-full opacity-30">
+        <svg className="absolute inset-0 w-full h-full opacity-20">
           <path 
             d={generateGazePath()} 
             fill="none" 
-            stroke="rgba(34, 211, 238, 0.4)" 
+            stroke="rgba(34, 211, 238, 0.3)" 
             strokeWidth="1" 
             className="gaze-line"
           />
@@ -320,7 +353,7 @@ const AdvancedHeatmapOverlay = ({ result }: { result: AnalysisResult }) => {
   );
 };
 
-const ForensicDocumentView = ({ result, isReport = false }: { result: AnalysisResult, isReport?: boolean }) => {
+const ForensicDocumentView = ({ result, isUnlocked, onLockClick, isReport = false }: { result: AnalysisResult, isUnlocked: boolean, onLockClick: () => void, isReport?: boolean }) => {
   const heatmapMap = useMemo(() => {
     return result.eyeTrackingHeatmap?.reduce((acc, curr) => {
       acc[curr.section.toLowerCase()] = curr.attentionScore;
@@ -330,16 +363,16 @@ const ForensicDocumentView = ({ result, isReport = false }: { result: AnalysisRe
 
   const getHeatIntensity = (section: string) => {
     const score = heatmapMap[section.toLowerCase()] || 0;
-    if (score >= 8) return 'rgba(239, 68, 68, 0.15)';
-    if (score >= 5) return 'rgba(245, 158, 11, 0.1)';
-    return 'rgba(34, 211, 238, 0.05)';
+    if (score >= 8) return 'rgba(239, 68, 68, 0.12)';
+    if (score >= 5) return 'rgba(245, 158, 11, 0.08)';
+    return 'rgba(34, 211, 238, 0.04)';
   };
 
   return (
     <div className={`relative mx-auto w-full max-w-4xl bg-white text-black p-10 md:p-14 min-h-[700px] md:min-h-[1200px] ${!isReport ? 'shadow-[0_0_120px_rgba(0,0,0,0.9)]' : ''} border border-gray-100 rounded-[4px] font-serif group overflow-hidden animate-in fade-in zoom-in duration-1000`}>
       <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]" />
       
-      {!isReport && <AdvancedHeatmapOverlay result={result} />}
+      {!isReport && isUnlocked && <AdvancedHeatmapOverlay result={result} />}
 
       <header className="text-center mb-12 md:mb-16 border-b-[2px] border-black pb-8 relative z-20">
         <h1 className="text-3xl md:text-5xl font-bold uppercase mb-2 tracking-normal px-4">{result.extractedData.name}</h1>
@@ -355,22 +388,29 @@ const ForensicDocumentView = ({ result, isReport = false }: { result: AnalysisRe
               className="absolute inset-0 rounded-3xl z-[-1]" 
               style={{ backgroundColor: getHeatIntensity(section), border: `1px solid ${getHeatIntensity(section).replace('0.15', '0.3').replace('0.1', '0.2').replace('0.05', '0.1')}` }} 
             />
-            <div className={`absolute -top-4 right-6 px-3 py-1 rounded-xl ${isReport ? 'bg-black text-white' : 'bg-black text-white'} text-[9px] font-black flex items-center gap-3 shadow-md`}>
-              <Scan className="w-3 h-3 text-cyan-400" /> BIOMETRIC FOCUS: {(heatmapMap[section.toLowerCase()] || 0) * 10}%
-            </div>
+            
+            {isUnlocked && (
+              <div className={`absolute -top-4 right-6 px-3 py-1 rounded-xl ${isReport ? 'bg-black text-white' : 'bg-black text-white'} text-[9px] font-black flex items-center gap-3 shadow-md`}>
+                <Scan className="w-3 h-3 text-cyan-400" /> BIOMETRIC FOCUS: {(heatmapMap[section.toLowerCase()] || 0) * 10}%
+              </div>
+            )}
+            
             <h2 className="text-lg md:text-2xl font-bold border-b-[2px] border-black uppercase mb-6 pb-2 tracking-[0.05em]">{section}</h2>
-            <div className="space-y-3 md:space-y-4">
-               {section === 'Education' && result.extractedData.education?.map((edu, i) => <p key={i} className="text-xs md:text-sm font-semibold">{edu}</p>)}
-               {section === 'Experience' && result.extractedData.experience?.map((exp, i) => (
-                 <div key={i} className="text-xs md:text-sm">
-                    <p className="font-bold mb-2 uppercase tracking-tight">{exp}</p>
-                    <div className="w-full h-1.5 bg-black/[0.05] rounded-full mb-2" />
-                    <div className="w-4/5 h-1.5 bg-black/[0.05] rounded-full" />
-                 </div>
-               ))}
-               {section === 'Skills' && <div className="flex flex-wrap gap-3">{result.extractedData.skills?.map((skill, i) => <span key={i} className="text-xs md:text-sm font-bold border-b border-black/10">/ {skill}</span>)}</div>}
-               {section === 'Projects' && (result.extractedData.projects?.length > 0 ? result.extractedData.projects.map((p, i) => <p key={i} className="text-xs md:text-sm italic">{p}</p>) : <p className="text-[11px] text-gray-400 italic">No specific projects detected.</p>)}
-            </div>
+            
+            <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Forensic Document Data" onLockClick={onLockClick}>
+              <div className="space-y-3 md:space-y-4">
+                 {section === 'Education' && result.extractedData.education?.map((edu, i) => <p key={i} className="text-xs md:text-sm font-semibold">{edu}</p>)}
+                 {section === 'Experience' && result.extractedData.experience?.map((exp, i) => (
+                   <div key={i} className="text-xs md:text-sm">
+                      <p className="font-bold mb-2 uppercase tracking-tight">{exp}</p>
+                      <div className="w-full h-1.5 bg-black/[0.05] rounded-full mb-2" />
+                      <div className="w-4/5 h-1.5 bg-black/[0.05] rounded-full" />
+                   </div>
+                 ))}
+                 {section === 'Skills' && <div className="flex flex-wrap gap-3">{result.extractedData.skills?.map((skill, i) => <span key={i} className="text-xs md:text-sm font-bold border-b border-black/10">/ {skill}</span>)}</div>}
+                 {section === 'Projects' && (result.extractedData.projects?.length > 0 ? result.extractedData.projects.map((p, i) => <p key={i} className="text-xs md:text-sm italic">{p}</p>) : <p className="text-[11px] text-gray-400 italic">No specific projects detected.</p>)}
+              </div>
+            </LockedSectionWrapper>
           </section>
         ))}
       </div>
@@ -387,7 +427,7 @@ const ProcessLog = () => {
     return () => clearInterval(interval);
   }, []);
   return (
-    <div className="h-32 overflow-hidden flex flex-col justify-end items-center gap-3 px-6 w-full max-w-sm">
+    <div className="h-32 overflow-hidden flex flex-col justify-end items-center gap-3 px-6 w-full max-sm:max-w-xs">
       {logs.map((log, idx) => (
         <p key={idx} className={`text-[10px] md:text-[11px] font-mono uppercase tracking-[0.3em] transition-all duration-700 text-center ${idx === logs.length - 1 ? 'text-cyan-400 font-bold opacity-100 shimmer-text scale-110' : 'text-cyan-900 opacity-20'}`}>{log}</p>
       ))}
@@ -398,15 +438,14 @@ const ProcessLog = () => {
 const AboutMeModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-      <GlassCard className="max-w-2xl w-full relative z-10 !p-12 border-cyan-500/30 overflow-hidden">
+      <GlassCard className="max-w-2xl w-full relative z-10 !p-12 border-cyan-500/30 overflow-hidden animate-in fade-in zoom-in duration-300">
         <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors z-20">
           <X className="w-6 h-6" />
         </button>
         
         <div className="flex flex-col md:flex-row items-center gap-12 relative z-10">
-          {/* Circular Profile Image with Glowing Aura */}
           <div className="relative group shrink-0">
             <div className="absolute -inset-4 bg-cyan-500/20 blur-2xl rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
             <div className="w-40 h-40 md:w-56 md:h-56 rounded-full overflow-hidden border-4 border-cyan-500/40 relative z-10 shadow-[0_0_50px_rgba(34,211,238,0.25)] bg-slate-900">
@@ -460,10 +499,105 @@ const AboutMeModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
   );
 };
 
+const PremiumLockOverlay = ({ onUnlock, onBack }: { onUnlock: () => void, onBack: () => void }) => {
+  const missingFeatures = [
+    { 
+      icon: Eye, 
+      title: "Recruiter Heatmap", 
+      desc: "Stop the guessing. See exactly where MDs drop off. Uncover 'Dead Zones' in your profile.",
+      color: "text-red-400"
+    },
+    { 
+      icon: Cpu, 
+      title: "ATS-Ready Word Doc", 
+      desc: "Instant download. A perfectly formatted .docx file engineered to bypass modern filters.",
+      color: "text-cyan-400"
+    },
+    { 
+      icon: Settings, 
+      title: "Bullet Refiner AI", 
+      desc: "Line-by-line corporate logic critiques. Transform weak bullets into Elite KPI-driven wins.",
+      color: "text-indigo-400"
+    },
+    { 
+      icon: Target, 
+      title: "Partner-Level Audit", 
+      desc: "Brutally honest forensic analysis. Discover why you're really getting ghosted.",
+      color: "text-emerald-400"
+    }
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 md:p-10 pointer-events-auto">
+      {/* Cinematic Background Layer */}
+      <div className="absolute inset-0 bg-[#020617] overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.4)_0%,#020617_100%)]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+      </div>
+
+      <div className="relative w-full max-w-6xl h-full max-h-[90vh] glass-panel !bg-slate-950/40 rounded-[3rem] border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in duration-500">
+        <div className="overflow-y-auto flex-1 p-8 md:p-16 flex flex-col items-center">
+          <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[10px] font-black uppercase tracking-[0.4em] mb-12">
+              <Sparkles className="w-4 h-4 animate-pulse" /> Premium Unlock Required
+          </div>
+          
+          <h3 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tight text-center mb-6 drop-shadow-2xl italic">
+            Unlock Your <span className="text-cyan-400">Full Forensic Report</span>
+          </h3>
+          <p className="text-slate-400 text-sm md:text-base font-medium italic text-center max-w-2xl mb-16 leading-relaxed">
+            Stop flying blind. Get the same high-level insights hiring partners use to select Tier-1 candidates globally.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mb-16">
+            {missingFeatures.map((f, i) => (
+              <div key={i} className="bg-white/5 border border-white/5 p-8 rounded-3xl flex flex-col items-center md:items-start text-center md:text-left group hover:bg-white/[0.07] transition-all duration-500 animate-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms` }}>
+                <div className={`w-14 h-14 rounded-2xl bg-slate-900/50 flex items-center justify-center ${f.color} mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all shadow-inner border border-white/5`}>
+                  <f.icon className="w-7 h-7 animate-pulse" />
+                </div>
+                <h4 className="text-lg font-black text-white uppercase tracking-tight mb-3 italic">{f.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="w-full max-w-xl bg-cyan-500/5 border border-cyan-500/20 p-10 rounded-[2.5rem] flex flex-col items-center gap-8 shadow-[0_0_80px_rgba(34,211,238,0.1)] mb-10">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.5em] mb-3">Instant Lifetime Access (Per Scan)</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black text-white">$9.99</span>
+                <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest line-through">$24.99</span>
+              </div>
+            </div>
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); onUnlock(); }}
+              className="w-full relative overflow-hidden bg-cyan-500 text-black px-12 py-6 rounded-2xl flex items-center justify-center gap-4 transition-all hover:bg-cyan-400 hover:scale-[1.02] shadow-[0_20px_60px_rgba(8,145,178,0.4)] active:scale-95 group/pay cursor-pointer z-[170]"
+            >
+              <CreditCard className="w-6 h-6 animate-pulse" />
+              <div className="flex flex-col items-start text-left">
+                <span className="text-[18px] font-black uppercase tracking-widest">Pay & Unlock Full Analysis</span>
+                <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Secure Stripe Payment • No Hidden Fees</span>
+              </div>
+            </button>
+            
+            <button onClick={onBack} className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors cursor-pointer flex items-center gap-2 group">
+              <ArrowRight className="w-3 h-3 rotate-180 group-hover:-translate-x-1 transition-transform" /> Return to Summary View
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [state, setState] = useState<AppState>({ file: null, industry: Industry.AUDIT, region: Region.US, jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null });
   const [isExporting, setIsExporting] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showPayModal, setShowPayModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -487,6 +621,8 @@ export default function App() {
     }
     
     setState(prev => ({ ...prev, file, isAnalyzing: true, error: null, analysisPhase: 'Reading document...' }));
+    setIsUnlocked(false); 
+    setShowPayModal(false);
     
     try {
       const reader = new FileReader();
@@ -530,7 +666,7 @@ export default function App() {
       reportElement.classList.remove('hidden'); 
       
       const canvas = await html2canvas(reportElement, {
-        scale: 3, 
+        scale: 2, 
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
@@ -621,31 +757,56 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${extractedData.name.replace(/\s+/g, '_')}_Optimized_Profile.docx`;
+      link.download = `${extractedData.name.replace(/\s+/g, '_')}_ATS_Optimized_Resume.docx`;
       link.click();
     } catch (err) { console.error(err); }
   };
 
   const handleReset = () => {
     setState({ file: null, industry: state.industry, region: state.region, jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null });
+    setIsUnlocked(false);
+    setShowPayModal(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const triggerPayModal = () => {
+    setShowPayModal(true);
+  };
+
+  const simulatePayment = () => {
+    setShowPayModal(false);
+    setState(prev => ({ ...prev, isAnalyzing: true, analysisPhase: 'Securing Gateway...' }));
+    
+    setTimeout(() => {
+      setState(prev => ({ ...prev, analysisPhase: 'Processing $9.99 Secure Payment...' }));
+      setTimeout(() => {
+        setIsUnlocked(true);
+        setState(prev => ({ ...prev, isAnalyzing: false, analysisPhase: '' }));
+        setTimeout(() => {
+          dashboardRef.current?.querySelector('#premium-content-gate')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }, 1500);
+    }, 800);
   };
 
   return (
     <div className="min-h-screen selection:bg-cyan-500/30 flex flex-col bg-[#020617] transition-all duration-700">
-      
       <AboutMeModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
 
+      {showPayModal && (
+        <PremiumLockOverlay onUnlock={simulatePayment} onBack={() => setShowPayModal(false)} />
+      )}
+
       {(isExporting || state.isAnalyzing) && (
-        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center space-y-12 p-10 text-center animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center space-y-12 p-10 text-center animate-in fade-in duration-500">
           <div className="relative">
             <Loader2 className="w-24 h-24 text-cyan-400 animate-spin opacity-40" />
             <Zap className="w-10 h-10 text-cyan-400 absolute inset-0 m-auto animate-pulse drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
-            <div className="absolute -inset-8 bg-cyan-500/10 blur-3xl animate-pulse rounded-full" />
+            <div className="absolute -inset-8 bg-cyan-500/10 blur-2xl animate-pulse rounded-full" />
           </div>
           <div className="space-y-6 flex flex-col items-center max-w-lg">
             <h3 className="text-3xl font-serif-premium italic text-white tracking-[0.2em] uppercase shimmer-text">
-                {isExporting ? "Compiling Report..." : "Generating Analysis..."}
+                {isExporting ? "Compiling Report..." : "Processing..."}
             </h3>
             <p className="text-[12px] font-black text-cyan-500 uppercase tracking-[0.8em] animate-pulse">
                 {state.analysisPhase || "Finalizing..."}
@@ -745,6 +906,7 @@ export default function App() {
           </div>
         ) : (
           <div className="w-full space-y-12 md:space-y-20 pb-24">
+            {/* Summary Section */}
             <div className="glass-panel p-10 md:p-14 rounded-[3rem] border border-cyan-500/20 grid grid-cols-1 xl:grid-cols-4 gap-12 animate-in fade-in slide-in-from-top-12 duration-1000">
                <div className="xl:col-span-1 flex flex-col items-center xl:border-r border-white/5 pr-4">
                   <ScoreRing score={state.result.resumeIQ} label="RESUME IQ" size="w-28 h-28 md:w-40 md:h-40" color="stroke-cyan-500" />
@@ -801,66 +963,99 @@ export default function App() {
                </div>
             </GlassCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
-               <div className="lg:col-span-3">
-                  <FuturisticHeader title="Biometric Focus" subtitle="Simulated Partner-Level Eye Tracking" />
-                  <ForensicDocumentView result={state.result} />
-               </div>
-               <div className="lg:col-span-2 space-y-8">
-                  <FuturisticHeader title="Career Insights" subtitle="Professional Standards Audit" />
-                  {state.result.recruiterTips?.map((tip, i) => <RecruiterTipCard key={i} tip={tip} index={i} />)}
-               </div>
-            </div>
+            <div className="relative" id="premium-content-gate">
+              <div className="space-y-12 md:space-y-20">
+                {/* Biometric Heatmap Area */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+                   <div className="lg:col-span-3">
+                      <FuturisticHeader title="Biometric Focus" subtitle="Simulated Partner-Level Eye Tracking" />
+                      <ForensicDocumentView result={state.result} isUnlocked={isUnlocked} onLockClick={triggerPayModal} />
+                   </div>
+                   <div className="lg:col-span-2 space-y-8">
+                      <FuturisticHeader title="Career Insights" subtitle="Professional Standards Audit" />
+                      <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Career Coaching Advice" onLockClick={triggerPayModal}>
+                        {state.result.recruiterTips?.map((tip, i) => <RecruiterTipCard key={i} tip={tip} index={i} />)}
+                      </LockedSectionWrapper>
+                   </div>
+                </div>
 
-            <GlassCard delay={700}>
-               <FuturisticHeader title="Impact Audit" subtitle="Bullet Optimization Logic" />
-               <div className="divide-y divide-white/5 space-y-6">
-                  {state.result.bulletCritiques?.map((item, i) => <BulletCritiqueRow key={i} item={item} index={i} />)}
-               </div>
-            </GlassCard>
+                {/* Impact Audit Area */}
+                <div className="relative">
+                   <FuturisticHeader title="Impact Audit" subtitle="Bullet Optimization Logic" />
+                   <GlassCard delay={700} className="relative">
+                      <div className="divide-y divide-white/5 space-y-6">
+                         {state.result.bulletCritiques?.map((item, i) => (
+                           <BulletCritiqueRow key={i} item={item} index={i} isUnlocked={isUnlocked} onLockClick={triggerPayModal} />
+                         ))}
+                      </div>
+                   </GlassCard>
+                </div>
 
-            <div className="pt-16 no-print">
-              <div className="w-full relative group">
-                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/30 to-blue-500/30 blur-3xl opacity-40 group-hover:opacity-80 transition-opacity duration-1000 rounded-[4rem]" />
-                <GlassCard className="relative border-cyan-500/40 flex flex-col md:flex-row items-center justify-between gap-12 !p-16 md:!p-20 shadow-[0_0_100px_rgba(34,211,238,0.2)]" delay={1000}>
-                  <div className="space-y-6 text-center md:text-left">
-                    <h2 className="text-5xl md:text-6xl font-serif-premium font-bold text-white tracking-tight uppercase">Analysis <span className="text-cyan-400 italic">Vault</span></h2>
-                    <p className="text-slate-400 text-base md:text-lg max-w-lg font-medium leading-relaxed italic">
-                      Download your professional analysis or generate an optimized editable profile.
+                {/* Mid-Page Unlock Trigger */}
+                {!isUnlocked && (
+                  <div className="mt-20 py-16 flex flex-col items-center justify-center bg-cyan-950/5 border-2 border-dashed border-cyan-500/10 rounded-[3rem] p-10 text-center animate-in fade-in duration-1000">
+                    <div className="w-16 h-16 bg-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(34,211,238,0.2)] animate-bounce group cursor-pointer" onClick={triggerPayModal}>
+                      <Lock className="w-8 h-8 text-black group-hover:scale-110 transition-transform" />
+                    </div>
+                    <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4 shimmer-text">Forensic Intelligence Locked</h3>
+                    <p className="text-slate-400 text-sm max-w-md font-medium leading-relaxed mb-8 italic">
+                      Detailed section audits are hidden. Unlock the full recruiter forensic report for partner-level insights and your ATS-optimized resume download.
                     </p>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-8 w-full md:w-auto">
                     <button 
-                      onClick={handleDownloadPDF} 
-                      className="group/btn relative overflow-hidden bg-slate-900 border border-white/20 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all hover:border-cyan-500/70 hover:scale-110 shadow-2xl min-w-[240px]"
+                      onClick={triggerPayModal}
+                      className="group relative overflow-hidden bg-cyan-600 text-white px-10 py-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-cyan-500 hover:scale-105 shadow-xl active:scale-95 font-black uppercase tracking-widest text-[11px] cursor-pointer"
                     >
-                      <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 group-hover/btn:bg-cyan-500 group-hover/btn:text-black transition-all duration-500">
-                        <FileDown className="w-8 h-8" />
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Download PDF</span>
-                        <span className="text-[9px] font-black text-slate-500 group-hover/btn:text-cyan-400 mt-2">Full Report</span>
-                      </div>
+                      Unlock All Premium Insights <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
+                  </div>
+                )}
 
-                    <button 
-                      onClick={handleDownloadDOCX} 
-                      className="group/btn relative overflow-hidden bg-cyan-600 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all hover:bg-cyan-400 hover:scale-110 shadow-[0_30px_60px_rgba(8,145,178,0.5)] min-w-[240px]"
-                    >
-                      <div className="w-16 h-16 rounded-3xl bg-black/20 flex items-center justify-center text-white transition-all duration-500">
-                        <ClipboardCheck className="w-8 h-8" />
+                {/* Download Vault */}
+                <div className="pt-16 no-print">
+                  <div className="w-full relative group">
+                    <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000 rounded-[4rem]" />
+                    <GlassCard className="relative border-cyan-500/40 flex flex-col md:flex-row items-center justify-between gap-12 !p-16 md:!p-20 shadow-[0_0_100px_rgba(34,211,238,0.15)]" delay={1000}>
+                      <div className="space-y-6 text-center md:text-left">
+                        <h2 className="text-5xl md:text-6xl font-serif-premium font-bold text-white tracking-tight uppercase">Analysis <span className="text-cyan-400 italic">Vault</span></h2>
+                        <p className="text-slate-400 text-base md:text-lg max-w-lg font-medium leading-relaxed italic">
+                          Download your professional analysis report or generate your new optimized profile.
+                        </p>
                       </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Get Word File</span>
-                        <span className="text-[9px] font-black text-cyan-200 mt-2">Optimized Version</span>
+                      
+                      <div className="flex flex-col sm:flex-row gap-8 w-full md:w-auto">
+                        <button 
+                          onClick={isUnlocked ? handleDownloadPDF : triggerPayModal} 
+                          className={`group/btn relative overflow-hidden bg-slate-900 border border-white/20 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all min-w-[240px] cursor-pointer ${!isUnlocked ? 'hover:border-white/40' : 'hover:border-cyan-500/70 hover:scale-110 shadow-2xl'}`}
+                        >
+                          <div className={`w-16 h-16 rounded-3xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 ${isUnlocked ? 'group-hover/btn:bg-cyan-500 group-hover/btn:text-black' : ''} transition-all duration-500`}>
+                            {isUnlocked ? <FileDown className="w-8 h-8" /> : <Lock className="w-8 h-8 opacity-40" />}
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Download PDF</span>
+                            <span className="text-[9px] font-black text-slate-500 group-hover/btn:text-cyan-400 mt-2">{isUnlocked ? 'Full Report' : 'Premium Feature'}</span>
+                          </div>
+                        </button>
+
+                        <button 
+                          onClick={isUnlocked ? handleDownloadDOCX : triggerPayModal} 
+                          className={`group/btn relative overflow-hidden bg-cyan-600 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all min-w-[240px] cursor-pointer ${!isUnlocked ? 'bg-cyan-900 opacity-80' : 'hover:bg-cyan-400 hover:scale-110 shadow-[0_30px_60px_rgba(8,145,178,0.5)]'}`}
+                        >
+                          <div className="w-16 h-16 rounded-3xl bg-black/20 flex items-center justify-center text-white transition-all duration-500">
+                            {isUnlocked ? <ClipboardCheck className="w-8 h-8" /> : <Lock className="w-8 h-8 opacity-40" />}
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Get Word File</span>
+                            <span className="text-[9px] font-black text-cyan-200 mt-2">{isUnlocked ? 'ATS-Ready Resume' : 'Premium Feature'}</span>
+                          </div>
+                        </button>
                       </div>
-                    </button>
+                    </GlassCard>
                   </div>
-                </GlassCard>
+                </div>
               </div>
             </div>
 
+            {/* Offline/Hidden Report Element for html2canvas */}
             <div ref={reportRef} className="hidden bg-white p-12 text-black w-[210mm] font-serif overflow-hidden">
               <div className="border-b-[3px] border-black pb-8 mb-10 text-center">
                 <h1 className="text-4xl font-bold tracking-tight mb-2 uppercase">Resume Analyzer Report</h1>
@@ -891,14 +1086,14 @@ export default function App() {
               </div>
               <div className="mb-12">
                 <h2 className="text-sm font-black uppercase border-b border-black pb-2 font-sans tracking-widest mb-8">Attention Heatmap Modeling</h2>
-                <ForensicDocumentView result={state.result} isReport={true} />
+                <ForensicDocumentView result={state.result} isUnlocked={true} isReport={true} onLockClick={() => {}} />
               </div>
             </div>
 
             <div className="flex justify-center pt-12 no-print">
                <button 
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-500 hover:text-cyan-400 transition-all flex items-center gap-4 group"
+                className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-500 hover:text-cyan-400 transition-all flex items-center gap-4 group cursor-pointer"
                >
                  Back to Summit <ChevronRight className="w-4 h-4 transition-transform group-hover:-translate-y-2 rotate-[-90deg]" />
                </button>
@@ -932,7 +1127,7 @@ export default function App() {
               </p>
               <button 
                 onClick={() => setIsAboutOpen(true)}
-                className="mt-6 flex items-center gap-3 text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 transition-colors"
+                className="mt-6 flex items-center gap-3 text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 transition-colors cursor-pointer"
               >
                 About Lovish Singhal <ArrowRight className="w-3 h-3" />
               </button>
