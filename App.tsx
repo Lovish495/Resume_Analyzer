@@ -6,17 +6,13 @@ import {
   AlertCircle, 
   ShieldAlert, 
   Target, 
-  BrainCircuit, 
   CheckCircle2, 
-  XCircle,
   Info,
   Zap,
-  Terminal,
   X,
   Sparkles,
   Scan,
   Binary,
-  Fingerprint,
   ThumbsUp,
   ThumbsDown,
   AlertOctagon,
@@ -31,22 +27,21 @@ import {
   ChevronRight,
   Lock,
   CreditCard,
-  Eye,
-  Settings,
-  Download,
-  Cpu
+  Eye
 } from 'lucide-react';
 import { Industry, AppState, AnalysisResult, Region } from './types';
-import { analyzeResume } from './services/geminiService';
+import { 
+  analyzeResume
+} from './services/geminiService';
 
 // @ts-ignore
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'https://esm.sh/docx';
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, BorderStyle } from 'https://esm.sh/docx';
 // @ts-ignore
 import { jsPDF } from 'https://esm.sh/jspdf';
 // @ts-ignore
 import html2canvas from 'https://esm.sh/html2canvas';
 
-const GlassCard = ({ children, className = "", delay = 0 }: { children?: React.ReactNode, className?: string, delay?: number, key?: any }) => (
+const GlassCard = ({ children, className = "", delay = 0 }: { children?: React.ReactNode, className?: string, delay?: number }) => (
   <div 
     className={`glass-panel rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both ${className}`}
     style={{ animationDelay: `${delay}ms` }}
@@ -66,7 +61,7 @@ const FuturisticHeader = ({ title, subtitle }: { title: string, subtitle: string
   </div>
 );
 
-const LockedSectionWrapper = ({ isUnlocked, children, onLockClick, lockLabel = "Premium Feature" }: { isUnlocked: boolean, children: React.ReactNode, onLockClick?: () => void, lockLabel?: string }) => {
+const LockedSectionWrapper = ({ isUnlocked, children, onLockClick, lockLabel = "Premium Feature" }: { isUnlocked: boolean, children?: React.ReactNode, onLockClick?: () => void, lockLabel?: string }) => {
   if (isUnlocked) return <div className="animate-in fade-in duration-700">{children}</div>;
   
   return (
@@ -137,7 +132,7 @@ const ATSMeter = ({ score }: { score: number }) => (
   </div>
 );
 
-const BulletCritiqueRow = ({ item, index, isUnlocked, onLockClick }: { item: any, index: number, isUnlocked: boolean, onLockClick: () => void, key?: any }) => {
+const BulletCritiqueRow = ({ item, index, isUnlocked, onLockClick }: { item: any, index: number, isUnlocked: boolean, onLockClick: () => void }) => {
   const [showRewrites, setShowRewrites] = useState(false);
   
   return (
@@ -202,7 +197,7 @@ const BulletCritiqueRow = ({ item, index, isUnlocked, onLockClick }: { item: any
   );
 };
 
-const RecruiterTipCard = ({ tip, index }: { tip: any, index: number, key?: any }) => {
+const RecruiterTipCard = ({ tip, index }: { tip: any, index: number }) => {
   const getColors = () => {
     switch (tip.type) {
       case 'strength': return { border: 'border-emerald-500/10', bg: 'bg-emerald-500/5', text: 'text-emerald-400', icon: CheckCircle2 };
@@ -353,7 +348,7 @@ const AdvancedHeatmapOverlay = ({ result }: { result: AnalysisResult }) => {
   );
 };
 
-const ForensicDocumentView = ({ result, isUnlocked, onLockClick, isReport = false }: { result: AnalysisResult, isUnlocked: boolean, onLockClick: () => void, isReport?: boolean }) => {
+const ForensicDocumentView = ({ result, isUnlocked, onLockClick }: { result: AnalysisResult, isUnlocked: boolean, onLockClick: () => void }) => {
   const heatmapMap = useMemo(() => {
     return result.eyeTrackingHeatmap?.reduce((acc, curr) => {
       acc[curr.section.toLowerCase()] = curr.attentionScore;
@@ -369,10 +364,10 @@ const ForensicDocumentView = ({ result, isUnlocked, onLockClick, isReport = fals
   };
 
   return (
-    <div className={`relative mx-auto w-full max-w-4xl bg-white text-black p-10 md:p-14 min-h-[700px] md:min-h-[1200px] ${!isReport ? 'shadow-[0_0_120px_rgba(0,0,0,0.9)]' : ''} border border-gray-100 rounded-[4px] font-serif group overflow-hidden animate-in fade-in zoom-in duration-1000`}>
+    <div className={`relative mx-auto w-full max-w-4xl bg-white text-black p-10 md:p-14 min-h-[700px] md:min-h-[1200px] shadow-[0_0_120px_rgba(0,0,0,0.9)] border border-gray-100 rounded-[4px] font-serif group overflow-hidden animate-in fade-in zoom-in duration-1000`}>
       <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]" />
       
-      {!isReport && isUnlocked && <AdvancedHeatmapOverlay result={result} />}
+      {isUnlocked && <AdvancedHeatmapOverlay result={result} />}
 
       <header className="text-center mb-12 md:mb-16 border-b-[2px] border-black pb-8 relative z-20">
         <h1 className="text-3xl md:text-5xl font-bold uppercase mb-2 tracking-normal px-4">{result.extractedData.name}</h1>
@@ -390,7 +385,7 @@ const ForensicDocumentView = ({ result, isUnlocked, onLockClick, isReport = fals
             />
             
             {isUnlocked && (
-              <div className={`absolute -top-4 right-6 px-3 py-1 rounded-xl ${isReport ? 'bg-black text-white' : 'bg-black text-white'} text-[9px] font-black flex items-center gap-3 shadow-md`}>
+              <div className={`absolute -top-4 right-6 px-3 py-1 rounded-xl bg-black text-white text-[9px] font-black flex items-center gap-3 shadow-md`}>
                 <Scan className="w-3 h-3 text-cyan-400" /> BIOMETRIC FOCUS: {(heatmapMap[section.toLowerCase()] || 0) * 10}%
               </div>
             )}
@@ -418,6 +413,7 @@ const ForensicDocumentView = ({ result, isUnlocked, onLockClick, isReport = fals
   );
 };
 
+/* Component to display processing status logs */
 const ProcessLog = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const logEntries = ["ANALYZING DOCUMENT STRUCTURE...", "EXTRACTING EXPERIENCE METRICS...", "SIMULATING RECRUITER SCAN...", "CHECKING ATS COMPLIANCE...", "MAPPING INDUSTRY KEYWORDS...", "AUDITING IMPACT...", "VALIDATING QUALIFICATIONS...", "SYNTHESIZING FEEDBACK...", "OPTIMIZING FLOW..."];
@@ -508,13 +504,13 @@ const PremiumLockOverlay = ({ onUnlock, onBack }: { onUnlock: () => void, onBack
       color: "text-red-400"
     },
     { 
-      icon: Cpu, 
+      icon: Scan, 
       title: "ATS-Ready Word Doc", 
       desc: "Instant download. A perfectly formatted .docx file engineered to bypass modern filters.",
       color: "text-cyan-400"
     },
     { 
-      icon: Settings, 
+      icon: Zap, 
       title: "Bullet Refiner AI", 
       desc: "Line-by-line corporate logic critiques. Transform weak bullets into Elite KPI-driven wins.",
       color: "text-indigo-400"
@@ -529,12 +525,9 @@ const PremiumLockOverlay = ({ onUnlock, onBack }: { onUnlock: () => void, onBack
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 md:p-10 pointer-events-auto">
-      {/* Cinematic Background Layer */}
       <div className="absolute inset-0 bg-[#020617] overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.4)_0%,#020617_100%)]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
       </div>
 
       <div className="relative w-full max-w-6xl h-full max-h-[90vh] glass-panel !bg-slate-950/40 rounded-[3rem] border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in duration-500">
@@ -546,14 +539,11 @@ const PremiumLockOverlay = ({ onUnlock, onBack }: { onUnlock: () => void, onBack
           <h3 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tight text-center mb-6 drop-shadow-2xl italic">
             Unlock Your <span className="text-cyan-400">Full Forensic Report</span>
           </h3>
-          <p className="text-slate-400 text-sm md:text-base font-medium italic text-center max-w-2xl mb-16 leading-relaxed">
-            Stop flying blind. Get the same high-level insights hiring partners use to select Tier-1 candidates globally.
-          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mb-16">
             {missingFeatures.map((f, i) => (
               <div key={i} className="bg-white/5 border border-white/5 p-8 rounded-3xl flex flex-col items-center md:items-start text-center md:text-left group hover:bg-white/[0.07] transition-all duration-500 animate-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms` }}>
-                <div className={`w-14 h-14 rounded-2xl bg-slate-900/50 flex items-center justify-center ${f.color} mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all shadow-inner border border-white/5`}>
+                <div className={`w-14 h-14 rounded-2xl bg-slate-900/50 flex items-center justify-center ${f.color} mb-6 group-hover:scale-110 transition-all shadow-inner border border-white/5`}>
                   <f.icon className="w-7 h-7 animate-pulse" />
                 </div>
                 <h4 className="text-lg font-black text-white uppercase tracking-tight mb-3 italic">{f.title}</h4>
@@ -578,7 +568,7 @@ const PremiumLockOverlay = ({ onUnlock, onBack }: { onUnlock: () => void, onBack
               <CreditCard className="w-6 h-6 animate-pulse" />
               <div className="flex flex-col items-start text-left">
                 <span className="text-[18px] font-black uppercase tracking-widest">Pay & Unlock Full Analysis</span>
-                <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Secure Stripe Payment • No Hidden Fees</span>
+                <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Secure Stripe Payment</span>
               </div>
             </button>
             
@@ -598,9 +588,9 @@ export default function App() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -615,8 +605,15 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    if (file.type !== 'application/pdf' && file.type !== 'text/plain') { 
-      setState(prev => ({ ...prev, error: 'File format not supported. Please use PDF or Text.' })); 
+    // Updated supported types to include docx
+    const supportedTypes = [
+      'application/pdf', 
+      'text/plain', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!supportedTypes.includes(file.type)) { 
+      setState(prev => ({ ...prev, error: 'File format not supported. Please use PDF, DOCX, or Text.' })); 
       return; 
     }
     
@@ -628,7 +625,7 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        const phases = ["Extracting resume sections...", "Evaluating industry relevance...", "Checking ATS scoring factors...", "Generating insights...", "Finalizing analysis report..."];
+        const phases = ["Neural Deep-Scan Logic...", "Evaluating industry relevance...", "Checking ATS scoring factors...", "Generating insights...", "Finalizing analysis report..."];
         let i = 0;
         const interval = setInterval(() => { 
           if (i < phases.length) { 
@@ -648,129 +645,10 @@ export default function App() {
           setState(prev => ({ ...prev, isAnalyzing: false, error: e.message || 'Analysis encountered an error. Please try again.' })); 
         }
       };
-      reader.onerror = () => {
-        setState(prev => ({ ...prev, isAnalyzing: false, error: 'Could not process the uploaded file.' }));
-      };
       reader.readAsDataURL(file);
     } catch (err) { 
       setState(prev => ({ ...prev, isAnalyzing: false, error: 'System error. Please refresh.' })); 
     }
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!state.result || !reportRef.current) return;
-    setIsExporting(true);
-    
-    try {
-      const reportElement = reportRef.current;
-      reportElement.classList.remove('hidden'); 
-      
-      const canvas = await html2canvas(reportElement, {
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: reportElement.scrollWidth,
-        height: reportElement.scrollHeight,
-      });
-      
-      reportElement.classList.add('hidden'); 
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / imgWidth;
-      const finalImgHeight = imgHeight * ratio;
-
-      let heightLeft = finalImgHeight;
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, finalImgHeight, undefined, 'FAST');
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - finalImgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, finalImgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
-      }
-      pdf.save(`${state.result.extractedData.name.replace(/\s+/g, '_')}_Resume_Analysis.pdf`);
-    } catch (err) {
-      console.error(err);
-      alert("PDF generation error. Resorting to print mode.");
-      window.print();
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleDownloadDOCX = async () => {
-    if (!state.result) return;
-    const { idealResumeContent, extractedData } = state.result;
-    try {
-      const sections = [];
-      sections.push(new Paragraph({ text: extractedData.name.toUpperCase(), heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }));
-      sections.push(new Paragraph({ text: extractedData.contact, alignment: AlignmentType.CENTER }));
-      sections.push(new Paragraph({ text: "", spacing: { after: 300 } }));
-      if (idealResumeContent.summary) {
-        sections.push(new Paragraph({ text: "PROFESSIONAL SUMMARY", heading: HeadingLevel.HEADING_2 }));
-        sections.push(new Paragraph({ text: idealResumeContent.summary, spacing: { after: 300 } }));
-      }
-      if (idealResumeContent.experience && idealResumeContent.experience.length > 0) {
-        sections.push(new Paragraph({ text: "PROFESSIONAL EXPERIENCE", heading: HeadingLevel.HEADING_2 }));
-        idealResumeContent.experience.forEach(exp => {
-          sections.push(new Paragraph({ 
-            children: [
-              new TextRun({ text: `${exp.role.toUpperCase()} | ${exp.company.toUpperCase()}`, bold: true }), 
-              new TextRun({ text: `\t${exp.period}`, bold: true })
-            ],
-            spacing: { before: 200 }
-          }));
-          (exp.bullets || []).forEach(b => {
-            sections.push(new Paragraph({ text: b, bullet: { level: 0 } }));
-          });
-          sections.push(new Paragraph({ text: "" }));
-        });
-      }
-      if (idealResumeContent.education && idealResumeContent.education.length > 0) {
-        sections.push(new Paragraph({ text: "EDUCATION", heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
-        idealResumeContent.education.forEach(edu => {
-          sections.push(new Paragraph({ 
-            children: [
-              new TextRun({ text: `${edu.degree}, ${edu.school}`, bold: true }),
-              new TextRun({ text: `\t${edu.year}`, bold: true })
-            ],
-            spacing: { before: 100 }
-          }));
-          if (edu.honors) sections.push(new Paragraph({ text: edu.honors, italic: true }));
-        });
-      }
-      if (idealResumeContent.skills && idealResumeContent.skills.length > 0) {
-        sections.push(new Paragraph({ text: "SKILLS & EXPERTISE", heading: HeadingLevel.HEADING_2, spacing: { before: 400 } }));
-        sections.push(new Paragraph({ text: idealResumeContent.skills.join(", ") }));
-      }
-      const doc = new Document({ sections: [{ children: sections }] });
-      const blob = await Packer.toBlob(doc);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${extractedData.name.replace(/\s+/g, '_')}_ATS_Optimized_Resume.docx`;
-      link.click();
-    } catch (err) { console.error(err); }
-  };
-
-  const handleReset = () => {
-    setState({ file: null, industry: state.industry, region: state.region, jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null });
-    setIsUnlocked(false);
-    setShowPayModal(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const triggerPayModal = () => {
-    setShowPayModal(true);
   };
 
   const simulatePayment = () => {
@@ -789,29 +667,216 @@ export default function App() {
     }, 800);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!state.result) return;
+    setIsExporting(true);
+    
+    try {
+      const reportElement = document.getElementById('full-forensic-report-container');
+      if (!reportElement) {
+        throw new Error("Analysis container not found");
+      }
+
+      const canvas = await html2canvas(reportElement, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#020617',
+        windowWidth: 1400,
+        ignoreElements: (el) => el.classList.contains('no-print')
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`${state.result.extractedData.name.replace(/\s+/g, '_')}_Career_Intelligence_Dossier.pdf`);
+    } catch (err) {
+      console.error("PDF Export failed", err);
+      alert("Failed to generate Full Intelligence PDF. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadDOCX = async () => {
+    if (!state.result) return;
+    const { idealResumeContent, extractedData } = state.result;
+    
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: extractedData.name, bold: true, size: 36 })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 },
+            children: [new TextRun({ text: extractedData.contact, size: 20 })],
+          }),
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
+            children: [new TextRun({ text: "PROFESSIONAL SUMMARY", bold: true })],
+          }),
+          new Paragraph({
+            spacing: { before: 100, after: 300 },
+            children: [new TextRun({ text: idealResumeContent.summary, size: 22 })],
+          }),
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
+            children: [new TextRun({ text: "PROFESSIONAL EXPERIENCE", bold: true })],
+          }),
+          ...idealResumeContent.experience.flatMap(exp => [
+            new Paragraph({
+              spacing: { before: 200 },
+              children: [
+                new TextRun({ text: exp.company, bold: true, size: 24 }),
+                new TextRun({ text: ` | ${exp.period}`, size: 20 }),
+              ],
+            }),
+            new Paragraph({
+              children: [new TextRun({ text: exp.role, italic: true, bold: true, size: 22 })],
+            }),
+            ...exp.bullets.map(bullet => 
+              new Paragraph({
+                bullet: { level: 0 },
+                spacing: { before: 50 },
+                children: [new TextRun({ text: bullet, size: 22 })],
+              })
+            )
+          ]),
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 300 },
+            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
+            children: [new TextRun({ text: "EDUCATION", bold: true })],
+          }),
+          ...idealResumeContent.education.flatMap(edu => [
+            new Paragraph({
+              spacing: { before: 100 },
+              children: [
+                new TextRun({ text: edu.school, bold: true, size: 24 }),
+                new TextRun({ text: ` | ${edu.year}`, size: 20 }),
+              ],
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: edu.degree, size: 22 }),
+                edu.honors ? new TextRun({ text: ` (${edu.honors})`, italic: true, size: 22 }) : new TextRun({ text: "" }),
+              ],
+            }),
+          ]),
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 300 },
+            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
+            children: [new TextRun({ text: "CORE SKILLS & TECHNOLOGIES", bold: true })],
+          }),
+          new Paragraph({
+            spacing: { before: 100 },
+            children: [new TextRun({ text: idealResumeContent.skills.join(" • "), size: 22 })],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${extractedData.name.replace(/\s+/g, '_')}_ATS_Optimized.docx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleReset = () => {
+    setState({ file: null, industry: Industry.AUDIT, region: Region.US, jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null });
+    setIsUnlocked(false);
+    setShowPayModal(false);
+  };
+
+  const triggerPayModal = () => setShowPayModal(true);
+
+  const ReportFooter = ({ className = "" }: { className?: string }) => (
+    <footer className={`w-full py-16 border-t border-white/5 bg-slate-950/40 ${className}`}>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 items-start mb-12">
+          <div className="md:col-span-4 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Scan className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-black text-xl tracking-tighter uppercase italic text-white">RESUME ANALYZER</span>
+            </div>
+            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
+              Using artificial intelligence to provide real, actionable feedback for professionals who want to level up their career game.
+            </p>
+          </div>
+          
+          <div className="md:col-span-4 flex flex-col gap-6 text-center md:text-left">
+            <h4 className="text-[11px] font-black uppercase tracking-[0.5em] text-cyan-500 border-b border-white/5 pb-2">Creator Vision</h4>
+            <div className="bg-white/5 p-6 rounded-3xl border border-white/5 group hover:border-cyan-500/30 transition-all">
+              <p className="text-[12px] text-slate-300 italic leading-relaxed">"I want every professional to grow and reach their full potential. Career paths can be complex, and my mission is to build intelligent tools that level the field."</p>
+              <button onClick={() => setIsAboutOpen(true)} className="mt-6 flex items-center justify-center md:justify-start gap-3 text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 cursor-pointer transition-colors no-print">
+                Meet the Creator <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="md:col-span-4 space-y-8 flex flex-col items-center md:items-end">
+            <h4 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-500 border-b border-white/5 pb-2 w-full md:text-right">Connect</h4>
+            <div className="flex items-center gap-6">
+              <a href="https://www.linkedin.com/in/calovishsinghal/" target="_blank" rel="noopener noreferrer" className="p-4 bg-white/5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-blue-600 transition-all hover:scale-110 shadow-lg">
+                <Linkedin className="w-5 h-5" />
+              </a>
+              <a href="mailto:Lovishsinghal2003@gmail.com" className="p-4 bg-white/5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-cyan-600 transition-all hover:scale-110 shadow-lg">
+                <Mail className="w-5 h-5" />
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 px-4">
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">
+            &copy; 2026 RESUME ANALYZER &bull; ALL RIGHTS RESERVED
+          </p>
+          <div className="flex items-center gap-8 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            <span className="hover:text-cyan-500 cursor-pointer transition-colors">Privacy Policy</span>
+            <span className="hover:text-cyan-500 cursor-pointer transition-colors">Terms of Service</span>
+            <span className="hover:text-cyan-500 cursor-pointer transition-colors">Stripe Secure</span>
+          </div>
+        </div>
+      </footer>
+  );
+
   return (
     <div className="min-h-screen selection:bg-cyan-500/30 flex flex-col bg-[#020617] transition-all duration-700">
       <AboutMeModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
 
-      {showPayModal && (
-        <PremiumLockOverlay onUnlock={simulatePayment} onBack={() => setShowPayModal(false)} />
-      )}
-
+      {showPayModal && <PremiumLockOverlay onUnlock={simulatePayment} onBack={() => setShowPayModal(false)} />}
+      
       {(isExporting || state.isAnalyzing) && (
         <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center space-y-12 p-10 text-center animate-in fade-in duration-500">
           <div className="relative">
             <Loader2 className="w-24 h-24 text-cyan-400 animate-spin opacity-40" />
             <Zap className="w-10 h-10 text-cyan-400 absolute inset-0 m-auto animate-pulse drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
-            <div className="absolute -inset-8 bg-cyan-500/10 blur-2xl animate-pulse rounded-full" />
           </div>
           <div className="space-y-6 flex flex-col items-center max-w-lg">
             <h3 className="text-3xl font-serif-premium italic text-white tracking-[0.2em] uppercase shimmer-text">
-                {isExporting ? "Compiling Report..." : "Processing..."}
+                {isExporting ? "Generating Report Dossier" : "Analyzing Your Resume"}
             </h3>
             <p className="text-[12px] font-black text-cyan-500 uppercase tracking-[0.8em] animate-pulse">
                 {state.analysisPhase || "Finalizing..."}
             </p>
-            {!isExporting && <ProcessLog />}
+            <ProcessLog />
           </div>
         </div>
       )}
@@ -826,163 +891,138 @@ export default function App() {
 
         {state.result && (
           <button 
-            onClick={handleReset}
-            className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all hover:scale-105 active:scale-95 group"
+              onClick={handleReset}
+              className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all hover:scale-105 active:scale-95 group"
           >
-            <PlusCircle className="w-5 h-5 text-cyan-400 group-hover:text-black transition-colors" />
-            <span className="hidden sm:inline">New Analysis</span>
+              <PlusCircle className="w-5 h-5 text-cyan-400 group-hover:text-black transition-colors" />
+              <span className="hidden sm:inline">New Analysis</span>
           </button>
         )}
       </nav>
 
       <main className="flex-1 w-full max-w-[1600px] mx-auto px-6 md:px-12 py-10 md:py-16 relative" ref={dashboardRef}>
-        {state.error && (
-            <div className="mb-12 p-6 rounded-3xl bg-red-950/20 border border-red-500/30 flex items-center gap-6 text-red-400 animate-in slide-in-from-top-6 duration-700 max-w-3xl mx-auto no-print shadow-2xl shadow-red-500/10">
-                <AlertOctagon className="w-8 h-8 shrink-0 animate-pulse" />
-                <p className="text-sm font-black uppercase tracking-widest">{state.error}</p>
-                <button onClick={() => setState(prev => ({ ...prev, error: null }))} className="ml-auto p-3 hover:bg-white/5 rounded-full transition-colors">
-                    <X className="w-5 h-5" />
-                </button>
-            </div>
-        )}
-
         {!state.result ? (
           <div className="w-full max-w-5xl mx-auto flex flex-col items-center justify-center space-y-12 md:space-y-16 animate-in fade-in duration-1000 mt-8">
             <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[11px] font-black uppercase tracking-[0.4em] animate-float shadow-[0_0_20px_rgba(34,211,238,0.1)]">
-                <Sparkles className="w-4 h-4 animate-pulse" /> AI-Driven Intelligence
+                <Sparkles className="w-4 h-4 animate-pulse" /> Advanced AI Evaluation
             </div>
 
             <div className="text-center space-y-8">
                 <h1 className="text-7xl md:text-9xl font-serif-premium font-bold tracking-tight text-white leading-tight animate-in slide-in-from-top-8 duration-1000">
-                    Resume <span className="text-cyan-400 italic shimmer-text">Analyzer</span>
+                    AI <span className="text-cyan-400 italic shimmer-text">Career Partner</span>
                 </h1>
-                <p className="text-base md:text-lg text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed animate-in fade-in duration-1000 delay-300">
-                    Built to empower professionals. Demystifying recruitment with intelligent auditing, 
-                    impact assessment, and brutally honest recruiter-grade feedback.
+                <p className="text-base md:text-xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
+                    Get an expert recruiter's perspective on your resume instantly. Upload your file to see what hiring managers really think.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full max-w-4xl">
-                {[
-                    { icon: BrainCircuit, title: "Deep Scan", subtitle: "Forensic Logic" },
-                    { icon: Target, title: "ATS Check", subtitle: "Scoring" },
-                    { icon: ShieldAlert, title: "Risk Audit", subtitle: "Gap Detection" }
-                ].map((feature, i) => (
-                    <div key={i} className="glass-panel p-8 rounded-3xl border border-white/5 flex flex-col items-center justify-center text-center space-y-4 hover:border-cyan-500/50 transition-all cursor-default group animate-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: `${500 + i * 150}ms` }}>
-                        <div className="w-14 h-14 bg-cyan-950/30 rounded-2xl flex items-center justify-center text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-inner">
-                            <feature.icon className="w-7 h-7" />
-                        </div>
-                        <div className="flex flex-col">
-                            <p className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-100 group-hover:text-cyan-400 transition-colors">{feature.title}</p>
-                            {feature.subtitle && <p className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-400">{feature.subtitle}</p>}
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <div className="w-full max-w-4xl space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <Target className="w-4 h-4 text-cyan-500" />
+                    <label className="text-xs font-black text-slate-300 uppercase tracking-widest">
+                      Target Job Description (Optional)
+                    </label>
+                  </div>
+                  <textarea 
+                    value={state.jobDescription}
+                    onChange={(e) => setState(prev => ({ ...prev, jobDescription: e.target.value }))}
+                    placeholder="Paste the job you're applying for here to get a tailored audit against specific requirements..."
+                    className="w-full bg-slate-900/40 border border-white/5 rounded-3xl p-6 text-sm text-slate-200 focus:border-cyan-500/50 outline-none h-48 custom-scrollbar resize-none glass-panel"
+                  />
+                </div>
 
-            <div className="w-full max-w-4xl relative group">
-                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 rounded-[4rem]" />
-                <div 
-                    className="relative w-full p-20 bg-slate-950/50 border-2 border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center text-center transition-all group-hover:border-cyan-500/60 shadow-2xl backdrop-blur-3xl animate-in zoom-in-95 duration-1000 delay-700"
-                >
-                    <div className="w-24 h-24 bg-cyan-950/40 rounded-full flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(34,211,238,0.15)] group-hover:shadow-[0_0_80px_rgba(34,211,238,0.3)] transition-all duration-700">
-                        <FileUp className="w-12 h-12 text-cyan-400 group-hover:scale-110 transition-transform duration-500" />
+                <div className="relative group h-full">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 rounded-[3rem]" />
+                  <div 
+                    onClick={() => !state.isAnalyzing && fileInputRef.current?.click()}
+                    className="relative h-full p-8 md:p-12 bg-slate-950/50 border-2 border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center text-center transition-all group-hover:border-cyan-500/60 shadow-2xl backdrop-blur-3xl cursor-pointer"
+                  >
+                    <div className="w-16 h-16 bg-cyan-950/40 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(34,211,238,0.15)] group-hover:shadow-[0_0_60px_rgba(34,211,238,0.3)] transition-all duration-700">
+                      <FileUp className="w-8 h-8 text-cyan-400 group-hover:scale-110 transition-transform duration-500" />
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-serif-premium font-bold text-white mb-3 text-center uppercase tracking-tight">Upload Your Profile</h2>
-                    <p className="text-slate-500 text-[13px] font-medium mb-12 uppercase tracking-[0.4em]">Optimal Analysis for PDF documents</p>
+                    <h2 className="text-xl md:text-2xl font-serif-premium font-bold text-white mb-2 uppercase tracking-tight">
+                      Drop Resume Here
+                    </h2>
+                    <p className="text-slate-500 text-[11px] font-medium mb-8 uppercase tracking-[0.2em]">
+                      PDF, DOCX, or Text Files Supported
+                    </p>
                     
                     <button 
-                        disabled={state.isAnalyzing}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="group/btn relative overflow-hidden bg-[#0f172a] border border-white/20 text-white px-12 py-5 rounded-2xl text-[13px] font-black uppercase tracking-[0.5em] hover:bg-cyan-600 hover:text-black transition-all flex items-center gap-4 shadow-2xl active:scale-95 disabled:opacity-50"
+                      className="group/btn relative overflow-hidden bg-[#0f172a] border border-white/20 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-cyan-600 hover:text-black transition-all flex items-center gap-3 shadow-xl active:scale-95 disabled:opacity-50"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-blue-500/20 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500" />
-                        <FileText className="w-5 h-5 relative z-10" />
-                        <span className="relative z-10">Select Resume</span>
+                      <FileText className="w-4 h-4" />
+                      <span>Select File</span>
                     </button>
+                  </div>
                 </div>
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".pdf,.txt" className="hidden" />
+              </div>
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".pdf,.txt,.docx" className="hidden" />
             </div>
           </div>
         ) : (
-          <div className="w-full space-y-12 md:space-y-20 pb-24">
-            {/* Summary Section */}
-            <div className="glass-panel p-10 md:p-14 rounded-[3rem] border border-cyan-500/20 grid grid-cols-1 xl:grid-cols-4 gap-12 animate-in fade-in slide-in-from-top-12 duration-1000">
+          <div className="w-full space-y-12 md:space-y-20 pb-24" id="full-forensic-report-container">
+            {/* Dossier Header Info - Only visible in PDF */}
+            <div className="hidden pdf-only flex justify-between items-center mb-10 border-b border-white/10 pb-6 px-10 pt-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-cyan-600 rounded-xl flex items-center justify-center">
+                  <Scan className="w-6 h-6 text-white" />
+                </div>
+                <span className="font-black text-2xl uppercase italic text-white">RESUME ANALYZER</span>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-cyan-500 font-black uppercase tracking-widest">Forensic Dossier ID: RA-{Date.now().toString().slice(-6)}</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Confidential Intelligence Report</p>
+              </div>
+            </div>
+
+            <div className="glass-panel p-10 rounded-[3rem] border border-cyan-500/20 grid grid-cols-1 xl:grid-cols-4 gap-12 animate-in fade-in slide-in-from-top-12 duration-1000">
                <div className="xl:col-span-1 flex flex-col items-center xl:border-r border-white/5 pr-4">
                   <ScoreRing score={state.result.resumeIQ} label="RESUME IQ" size="w-28 h-28 md:w-40 md:h-40" color="stroke-cyan-500" />
                   <div className="mt-6 text-center">
-                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em]">Overall Performance</p>
-                    <p className="text-[9px] text-slate-500 italic mt-2">Professional Standards Audit</p>
+                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em]">Neural Audit Score</p>
                   </div>
                </div>
                <div className="xl:col-span-3 space-y-10">
                   <div className="flex flex-wrap items-center justify-between gap-6">
-                     <h1 className="text-4xl md:text-6xl font-black tracking-normal text-white truncate max-w-full italic">
-                        {state.result.extractedData.name}
-                     </h1>
+                     <h1 className="text-4xl md:text-6xl font-black text-white italic">{state.result.extractedData.name}</h1>
                      <VerdictBadge status={state.result.verdict.status} />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                      <ATSMeter score={state.result.atsReadability} />
-                     <GlassCard className="flex flex-col items-center justify-center text-center !p-6" delay={200}>
+                     <div className="p-6 glass-panel rounded-3xl flex flex-col items-center justify-center text-center">
                         <TrendingUp className="w-8 h-8 text-emerald-400 mb-3" />
-                        <p className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-1">Market Fit</p>
+                        <p className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em]">Market Relevance</p>
                         <p className="text-2xl font-black text-white italic">{state.result.skillsIntelligence.marketRelevance}</p>
-                     </GlassCard>
-                     <GlassCard className="flex flex-col items-center justify-center text-center !p-6" delay={400}>
-                        <Fingerprint className="w-8 h-8 text-cyan-400 mb-3" />
-                        <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.3em] mb-1">Brand Score</p>
-                        <p className="text-2xl font-black text-white italic">{state.result.brandingScore.toFixed(1)}/10</p>
-                     </GlassCard>
+                     </div>
+                     <div className="p-6 glass-panel rounded-3xl flex flex-col items-center justify-center text-center">
+                        <Scan className="w-8 h-8 text-cyan-400 mb-3" />
+                        <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em]">Formatting Diagnosis</p>
+                        <p className="text-sm font-bold text-white italic truncate max-w-full">{state.result.formattingDiagnosis[0] || 'Optimized'}</p>
+                     </div>
                   </div>
                </div>
             </div>
 
-            <GlassCard className="bg-gradient-to-br from-slate-950 to-indigo-950/30 !p-10 md:!p-16" delay={300}>
-               <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                  <div className="lg:col-span-8 space-y-8">
-                     <div className="flex items-center gap-5 text-cyan-400">
-                        <Terminal className="w-8 h-8" />
-                        <p className="text-sm font-black uppercase tracking-[0.5em]">Executive Summary</p>
-                     </div>
-                     <p className="text-3xl md:text-4xl font-bold leading-tight text-white tracking-tight bg-black/60 p-10 rounded-[2.5rem] border-l-[10px] border-cyan-500">
-                        "{state.result.verdict.reason}"
-                     </p>
-                  </div>
-                  <div className="lg:col-span-4 space-y-6">
-                     <h4 className="text-xl font-black italic text-red-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                       <AlertCircle className="w-6 h-6" /> Rejection Risk
-                     </h4>
-                     {state.result.rejectionReasons?.map((r, i) => (
-                        <div key={i} className="flex items-start gap-5 text-[11px] text-slate-300 bg-red-950/20 p-5 rounded-2xl border border-red-500/20 font-semibold italic">
-                           <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                           <span>{r}</span>
-                        </div>
-                     ))}
-                  </div>
-               </div>
-            </GlassCard>
-
             <div className="relative" id="premium-content-gate">
               <div className="space-y-12 md:space-y-20">
-                {/* Biometric Heatmap Area */}
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
                    <div className="lg:col-span-3">
-                      <FuturisticHeader title="Biometric Focus" subtitle="Simulated Partner-Level Eye Tracking" />
+                      <FuturisticHeader title="Recruiter Eye-Track" subtitle="Predicted Focus Areas" />
                       <ForensicDocumentView result={state.result} isUnlocked={isUnlocked} onLockClick={triggerPayModal} />
                    </div>
                    <div className="lg:col-span-2 space-y-8">
-                      <FuturisticHeader title="Career Insights" subtitle="Professional Standards Audit" />
-                      <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Career Coaching Advice" onLockClick={triggerPayModal}>
+                      <FuturisticHeader title="Expert Insights" subtitle="Narrative Analysis" />
+                      <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Expert Analysis" onLockClick={triggerPayModal}>
                         {state.result.recruiterTips?.map((tip, i) => <RecruiterTipCard key={i} tip={tip} index={i} />)}
                       </LockedSectionWrapper>
                    </div>
                 </div>
 
-                {/* Impact Audit Area */}
                 <div className="relative">
-                   <FuturisticHeader title="Impact Audit" subtitle="Bullet Optimization Logic" />
-                   <GlassCard delay={700} className="relative">
+                   <FuturisticHeader title="Impact Audit" subtitle="Line-by-Line Refinement" />
+                   <GlassCard className="relative">
                       <div className="divide-y divide-white/5 space-y-6">
                          {state.result.bulletCritiques?.map((item, i) => (
                            <BulletCritiqueRow key={i} item={item} index={i} isUnlocked={isUnlocked} onLockClick={triggerPayModal} />
@@ -991,102 +1031,52 @@ export default function App() {
                    </GlassCard>
                 </div>
 
-                {/* Mid-Page Unlock Trigger */}
                 {!isUnlocked && (
-                  <div className="mt-20 py-16 flex flex-col items-center justify-center bg-cyan-950/5 border-2 border-dashed border-cyan-500/10 rounded-[3rem] p-10 text-center animate-in fade-in duration-1000">
-                    <div className="w-16 h-16 bg-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(34,211,238,0.2)] animate-bounce group cursor-pointer" onClick={triggerPayModal}>
-                      <Lock className="w-8 h-8 text-black group-hover:scale-110 transition-transform" />
+                  <div className="mt-20 py-16 flex flex-col items-center justify-center bg-cyan-950/5 border-2 border-dashed border-cyan-500/10 rounded-[3rem] p-10 text-center animate-in fade-in duration-1000 no-print">
+                    <div className="w-16 h-16 bg-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(34,211,238,0.2)] animate-bounce cursor-pointer" onClick={triggerPayModal}>
+                      <Lock className="w-8 h-8 text-black" />
                     </div>
                     <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4 shimmer-text">Forensic Intelligence Locked</h3>
                     <p className="text-slate-400 text-sm max-w-md font-medium leading-relaxed mb-8 italic">
-                      Detailed section audits are hidden. Unlock the full recruiter forensic report for partner-level insights and your ATS-optimized resume download.
+                      Unlock partner-level forensics and ATS optimized profile generation.
                     </p>
                     <button 
                       onClick={triggerPayModal}
-                      className="group relative overflow-hidden bg-cyan-600 text-white px-10 py-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-cyan-500 hover:scale-105 shadow-xl active:scale-95 font-black uppercase tracking-widest text-[11px] cursor-pointer"
+                      className="group relative bg-cyan-600 text-white px-10 py-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-cyan-500 hover:scale-105 shadow-xl font-black uppercase tracking-widest text-[11px] cursor-pointer"
                     >
-                      Unlock All Premium Insights <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      Unlock Full Analysis Report <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </div>
                 )}
 
-                {/* Download Vault */}
+                {/* PDF Special Footer - replicating home page look */}
+                <div className="hidden pdf-only px-10">
+                   <ReportFooter className="bg-transparent border-t-white/10" />
+                </div>
+
                 <div className="pt-16 no-print">
                   <div className="w-full relative group">
-                    <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000 rounded-[4rem]" />
-                    <GlassCard className="relative border-cyan-500/40 flex flex-col md:flex-row items-center justify-between gap-12 !p-16 md:!p-20 shadow-[0_0_100px_rgba(34,211,238,0.15)]" delay={1000}>
+                    <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-2xl opacity-20 rounded-[4rem]" />
+                    <GlassCard className="relative border-cyan-500/40 flex flex-col md:flex-row items-center justify-between gap-12 !p-16 md:!p-20 shadow-[0_0_100px_rgba(34,211,238,0.15)]">
                       <div className="space-y-6 text-center md:text-left">
-                        <h2 className="text-5xl md:text-6xl font-serif-premium font-bold text-white tracking-tight uppercase">Analysis <span className="text-cyan-400 italic">Vault</span></h2>
+                        <h2 className="text-5xl md:text-6xl font-serif-premium font-bold text-white tracking-tight uppercase italic">The <span className="text-cyan-400">Vault</span></h2>
                         <p className="text-slate-400 text-base md:text-lg max-w-lg font-medium leading-relaxed italic">
-                          Download your professional analysis report or generate your new optimized profile.
+                          Download your full intelligence dossier or export your resume in a clean, ATS-optimized Word format.
                         </p>
                       </div>
-                      
                       <div className="flex flex-col sm:flex-row gap-8 w-full md:w-auto">
-                        <button 
-                          onClick={isUnlocked ? handleDownloadPDF : triggerPayModal} 
-                          className={`group/btn relative overflow-hidden bg-slate-900 border border-white/20 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all min-w-[240px] cursor-pointer ${!isUnlocked ? 'hover:border-white/40' : 'hover:border-cyan-500/70 hover:scale-110 shadow-2xl'}`}
-                        >
-                          <div className={`w-16 h-16 rounded-3xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 ${isUnlocked ? 'group-hover/btn:bg-cyan-500 group-hover/btn:text-black' : ''} transition-all duration-500`}>
-                            {isUnlocked ? <FileDown className="w-8 h-8" /> : <Lock className="w-8 h-8 opacity-40" />}
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Download PDF</span>
-                            <span className="text-[9px] font-black text-slate-500 group-hover/btn:text-cyan-400 mt-2">{isUnlocked ? 'Full Report' : 'Premium Feature'}</span>
-                          </div>
+                        <button onClick={isUnlocked ? handleDownloadPDF : triggerPayModal} className="group/btn relative bg-slate-900 border border-white/20 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 hover:border-cyan-500/70 transition-all min-w-[240px] cursor-pointer">
+                            <FileDown className="w-8 h-8 text-cyan-400" />
+                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Full Dossier (PDF)</span>
                         </button>
-
-                        <button 
-                          onClick={isUnlocked ? handleDownloadDOCX : triggerPayModal} 
-                          className={`group/btn relative overflow-hidden bg-cyan-600 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all min-w-[240px] cursor-pointer ${!isUnlocked ? 'bg-cyan-900 opacity-80' : 'hover:bg-cyan-400 hover:scale-110 shadow-[0_30px_60px_rgba(8,145,178,0.5)]'}`}
-                        >
-                          <div className="w-16 h-16 rounded-3xl bg-black/20 flex items-center justify-center text-white transition-all duration-500">
-                            {isUnlocked ? <ClipboardCheck className="w-8 h-8" /> : <Lock className="w-8 h-8 opacity-40" />}
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Get Word File</span>
-                            <span className="text-[9px] font-black text-cyan-200 mt-2">{isUnlocked ? 'ATS-Ready Resume' : 'Premium Feature'}</span>
-                          </div>
+                        <button onClick={isUnlocked ? handleDownloadDOCX : triggerPayModal} className="group/btn relative bg-cyan-600 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 hover:bg-cyan-400 transition-all min-w-[240px] cursor-pointer shadow-[0_30px_60px_rgba(8,145,178,0.5)]">
+                            <ClipboardCheck className="w-8 h-8 text-white" />
+                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">ATS Optimized (DOCX)</span>
                         </button>
                       </div>
                     </GlassCard>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Offline/Hidden Report Element for html2canvas */}
-            <div ref={reportRef} className="hidden bg-white p-12 text-black w-[210mm] font-serif overflow-hidden">
-              <div className="border-b-[3px] border-black pb-8 mb-10 text-center">
-                <h1 className="text-4xl font-bold tracking-tight mb-2 uppercase">Resume Analyzer Report</h1>
-                <p className="text-xs uppercase tracking-[0.3em] font-sans text-gray-500">Decision Intelligence Platform Output</p>
-              </div>
-              <div className="grid grid-cols-2 gap-12 mb-12">
-                <div className="space-y-4">
-                  <h2 className="text-sm font-black uppercase border-b border-black pb-2 font-sans tracking-widest">Candidate Profile</h2>
-                  <div>
-                    <p className="text-2xl font-bold leading-none">{state.result.extractedData.name}</p>
-                    <p className="text-xs text-gray-600 mt-1 font-sans">{state.result.extractedData.contact}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <h2 className="text-sm font-black uppercase border-b border-black pb-2 font-sans tracking-widest w-full text-right">Resume IQ</h2>
-                  <div className="mt-4 flex items-baseline gap-2">
-                    <span className="text-6xl font-black text-blue-700">{state.result.resumeIQ}</span>
-                    <span className="text-xl font-bold text-gray-300">/ 100</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mb-12">
-                <h2 className="text-sm font-black uppercase border-b border-black pb-2 font-sans tracking-widest mb-6">Recruiter Verdict</h2>
-                <div className={`p-6 border-l-[8px] mb-6 ${state.result.verdict.status === 'Shortlist' ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : 'bg-red-50 border-red-500 text-red-900'}`}>
-                  <p className="text-2xl font-black italic tracking-tight uppercase">{state.result.verdict.status}</p>
-                </div>
-                <p className="text-lg leading-relaxed italic font-medium px-4 border-l border-gray-100">"{state.result.verdict.reason}"</p>
-              </div>
-              <div className="mb-12">
-                <h2 className="text-sm font-black uppercase border-b border-black pb-2 font-sans tracking-widest mb-8">Attention Heatmap Modeling</h2>
-                <ForensicDocumentView result={state.result} isUnlocked={true} isReport={true} onLockClick={() => {}} />
               </div>
             </div>
 
@@ -1102,57 +1092,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="w-full max-w-[1600px] mx-auto px-6 md:px-12 py-16 border-t border-white/5 bg-slate-950/40 no-print">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 items-start">
-          <div className="md:col-span-4 space-y-6">
-            <div className="flex items-center gap-4 group cursor-pointer" onClick={handleReset}>
-              <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20 transition-transform group-hover:rotate-12">
-                <Scan className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-black text-xl tracking-tighter uppercase italic text-white whitespace-nowrap">RESUME <span className="text-cyan-500">ANALYZER</span></span>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-xs italic">
-              Empowering global professionals with industry-grade, brutally honest AI analysis.
-            </p>
-            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest pt-4">
-              © 2026 RESUME ANALYZER • ALL RIGHTS RESERVED
-            </p>
-          </div>
-
-          <div className="md:col-span-4 flex flex-col gap-6">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-300 border-b border-white/5 pb-2">Creator Mission</h4>
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/5 group hover:border-cyan-500/30 transition-all">
-              <p className="text-[12px] text-slate-400 italic font-medium leading-relaxed group-hover:text-white transition-colors">
-                "I want every professional to grow and reach their full potential. This platform is my contribution to global professional advancement."
-              </p>
-              <button 
-                onClick={() => setIsAboutOpen(true)}
-                className="mt-6 flex items-center gap-3 text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 transition-colors cursor-pointer"
-              >
-                About Lovish Singhal <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-
-          <div className="md:col-span-4 space-y-8 flex flex-col items-center md:items-end">
-            <div className="flex items-center gap-6">
-              <a href="https://www.linkedin.com/in/calovishsinghal/" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-blue-600 transition-all hover:scale-110 shadow-lg" title="LinkedIn">
-                <Linkedin className="w-5 h-5" />
-              </a>
-              <a href="mailto:Lovishsinghal2003@gmail.com" className="p-3 bg-white/5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-cyan-600 transition-all hover:scale-110 shadow-lg" title="Email Me">
-                <Mail className="w-5 h-5" />
-              </a>
-            </div>
-            <div className="flex flex-col items-center md:items-end">
-               <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.5em] mb-1 text-right">GLOBAL TALENT NETWORK</span>
-               <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                  <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Live Performance Engine</span>
-               </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <ReportFooter className="no-print max-w-[1600px] mx-auto px-6 md:px-12" />
     </div>
   );
 }

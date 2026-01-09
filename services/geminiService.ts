@@ -1,8 +1,5 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Industry, Region } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeResume = async (
   base64File: string, 
@@ -12,10 +9,11 @@ export const analyzeResume = async (
   jobDescription: string,
   onProgress: (phase: string) => void
 ) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   onProgress("Initializing Forensic Audit Engine...");
   
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: {
       parts: [
         {
@@ -31,14 +29,13 @@ export const analyzeResume = async (
           MANDATORY REQUIREMENTS:
           1. Be brutally honest. Sound like a corporate recruiter or managing director.
           2. Conduct a forensic audit of all experience bullets.
-          3. Generate an 'idealResumeContent' which is a full, ready-to-use version of the resume. DO NOT skip any sections. Include a summary, all experience items with optimized bullets, education, and skills.
+          3. Generate an 'idealResumeContent' which is a full, ready-to-use version of the resume. Include a summary, all experience items with optimized bullets, education, and skills.
           4. Evaluate the 'resumeIQ' based on content quality, ATS safety, and narrative strength.
-          5. Ensure the verdict is professional and the tips are actionable.`
+          5. Return the response in the specified JSON schema.`
         }
       ]
     },
     config: {
-      thinkingConfig: { thinkingBudget: 24000 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -133,17 +130,6 @@ export const analyzeResume = async (
               }
             }
           },
-          interviewIntelligence: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { type: Type.STRING },
-                type: { type: Type.STRING },
-                starAnswer: { type: Type.STRING }
-              }
-            }
-          },
           formattingDiagnosis: { type: Type.ARRAY, items: { type: Type.STRING } },
           freshnessAudit: {
             type: Type.OBJECT,
@@ -202,3 +188,47 @@ export const analyzeResume = async (
 
   return JSON.parse(response.text);
 };
+
+export function encodePCM(data: Float32Array): string {
+  const l = data.length;
+  const int16 = new Int16Array(l);
+  for (let i = 0; i < l; i++) {
+    int16[i] = data[i] * 32768;
+  }
+  let binary = '';
+  const bytes = new Uint8Array(int16.buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+export function decodeBase64Audio(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export async function decodeAudioBuffer(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}

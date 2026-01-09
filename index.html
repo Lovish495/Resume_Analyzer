@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -132,6 +133,15 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #22d3ee;
+        }
+
+        /* Print/PDF Specific Styling */
+        .pdf-only {
+            display: none;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .pdf-only { display: flex !important; }
         }
     </style>
 <script type="importmap">

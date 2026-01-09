@@ -130,3 +130,9 @@ export interface AppState {
   result: AnalysisResult | null;
   error: string | null;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+  groundingUrls?: { title: string; uri: string }[];
+}
