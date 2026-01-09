@@ -19,6 +19,52 @@ export enum RiskLevel {
   HIGH = 'High'
 }
 
+export interface AchievementBadge {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  picture: string;
+  role: 'user' | 'admin';
+  isBlocked: boolean;
+  suspiciousActivity: boolean;
+  createdAt: number;
+  tokenBalance: number;
+  phone?: string;
+  links?: string[];
+  lastIndustry?: Industry;
+  // Gamification
+  xp: number;
+  level: number;
+  badges: AchievementBadge[];
+  completedTasks: string[]; // IDs of tips/tasks completed
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  priceINR: number;
+  tokens: number;
+  description: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  userId: string;
+  amount: number;
+  currency: 'INR';
+  timestamp: number;
+  status: 'completed' | 'failed';
+  resumeName: string;
+  tokensPurchased: number;
+}
+
 export interface ScoreBreakdown {
   structure: number;
   impact: number;
@@ -45,19 +91,26 @@ export interface InterviewQuestion {
 }
 
 export interface AnalysisResult {
+  id: string;
+  userId: string;
+  timestamp: number;
   overallScore: number;
   scoreBreakdown: ScoreBreakdown;
   atsReadability: number;
   atsRisk: RiskLevel;
   recruiterJustification: string;
   recruiterTips: {
+    id: string;
     type: 'strength' | 'issue' | 'risk';
-    content: string;
+    issue: string;
+    rectification: string;
     impact: 'Low' | 'Moderate' | 'High';
   }[];
   extractedData: {
     name: string;
     contact: string;
+    phone?: string;
+    links?: string[];
     education: string[];
     experience: string[];
     skills: string[];
@@ -121,6 +174,8 @@ export interface AnalysisResult {
 }
 
 export interface AppState {
+  user: User | null;
+  currentPage: 'home' | 'login' | 'dashboard' | 'admin' | 'admin-login';
   file: File | null;
   industry: Industry;
   region: Region;
@@ -129,10 +184,5 @@ export interface AppState {
   analysisPhase: string;
   result: AnalysisResult | null;
   error: string | null;
-}
-
-export interface ChatMessage {
-  role: 'user' | 'model';
-  text: string;
-  groundingUrls?: { title: string; uri: string }[];
+  plans: Plan[];
 }

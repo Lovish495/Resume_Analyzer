@@ -1,1098 +1,1368 @@
-
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { 
-  FileUp, 
-  FileText,
-  AlertCircle, 
-  ShieldAlert, 
-  Target, 
-  CheckCircle2, 
-  Info,
-  Zap,
-  X,
-  Sparkles,
-  Scan,
-  Binary,
-  ThumbsUp,
-  ThumbsDown,
-  AlertOctagon,
-  FileDown,
-  Loader2,
-  TrendingUp,
-  ClipboardCheck,
-  PlusCircle,
-  Linkedin,
-  Mail,
-  ArrowRight,
-  ChevronRight,
-  Lock,
-  CreditCard,
-  Eye
+  FileUp, FileText, AlertCircle, ShieldAlert, Target, CheckCircle2, 
+  Zap, X, Sparkles, Scan, Binary, FileDown, Loader2, TrendingUp, ClipboardCheck, 
+  Linkedin, Mail, ArrowRight, ChevronRight, Lock,
+  Eye, LogOut, User as UserIcon, Settings, BarChart3, 
+  Users, DollarSign, ShieldCheck, Search, MoreVertical, Trash2, Ban,
+  ChevronDown, LayoutDashboard, History, CreditCard as BillingIcon,
+  Award, Briefcase, Compass, BrainCircuit, Rocket, Trophy,
+  LineChart, Sparkle, ExternalLink, Fingerprint, Globe, BookOpen, MessageSquare, Send, Activity,
+  Server, Key, Plus, Edit2, ShieldX, FileOutput, Info, AlertTriangle, Link as LinkIcon, Phone,
+  Clock, RefreshCcw, Monitor, PieChart, Database, Cpu, Calendar, Download, ListFilter, Unlock,
+  Layers, HardDrive, Cpu as CpuIcon, Gauge, Radio, Radar, Shield, Check, XCircle,
+  Flag, Star, Gem, Medal, ListTodo, CircleDashed, Instagram, Table, Filter, DownloadCloud,
+  TrendingDown, ArrowUpRight, ArrowDownRight, Terminal, Save
 } from 'lucide-react';
-import { Industry, AppState, AnalysisResult, Region } from './types';
-import { 
-  analyzeResume
-} from './services/geminiService';
+import { Industry, AppState, AnalysisResult, Region, User, PaymentRecord, Plan, RiskLevel, InterviewQuestion } from './types';
+import { analyzeResume, generateFullPrepDeck, chatWithAssistant } from './services/geminiService';
+import { GoogleGenAI } from "@google/genai";
 
 // @ts-ignore
-import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, BorderStyle } from 'https://esm.sh/docx';
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, BorderStyle, ExternalHyperlink, Footer as DocxFooter, Header } from 'https://esm.sh/docx';
 // @ts-ignore
 import { jsPDF } from 'https://esm.sh/jspdf';
 // @ts-ignore
 import html2canvas from 'https://esm.sh/html2canvas';
 
-const GlassCard = ({ children, className = "", delay = 0 }: { children?: React.ReactNode, className?: string, delay?: number }) => (
+// --- CONSTANTS ---
+
+const DEFAULT_PLANS: Plan[] = [
+  { id: 'p1', name: 'Starter', priceINR: 499, tokens: 1, description: '1 Comprehensive AI Review' },
+  { id: 'p2', name: 'Standard', priceINR: 1999, tokens: 5, description: '5 Comprehensive AI Reviews' },
+  { id: 'p3', name: 'Pro Pack', priceINR: 3499, tokens: 10, description: '10 Comprehensive AI Reviews' }
+];
+
+const formatINR = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+// --- UI COMPONENTS ---
+
+const AdvancedVisualizer = () => (
+  <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center">
+    <div className="absolute inset-0 border border-cyan-500/20 rounded-full animate-spin-slow" />
+    <div className="absolute inset-4 border border-indigo-500/30 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '6s' }} />
+    <div className="absolute inset-8 border-2 border-cyan-400/40 rounded-full border-t-cyan-400 animate-spin" style={{ animationDirection: '3s' }} />
+    <div className="absolute inset-0 bg-cyan-500/10 rounded-full blur-[80px] animate-pulse" />
+    <div className="relative z-10 bg-slate-900 border border-white/20 p-8 rounded-[2.5rem] shadow-[0_0_50px_rgba(34,211,238,0.3)]">
+      <BrainCircuit className="w-12 h-12 text-cyan-400 animate-bounce" />
+    </div>
+  </div>
+);
+
+const GlassCard = ({ children, className = "", onClick }: { children?: React.ReactNode, className?: string, onClick?: () => void }) => (
   <div 
-    className={`glass-panel rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both ${className}`}
-    style={{ animationDelay: `${delay}ms` }}
+    className={`glass-panel rounded-2xl md:rounded-[2rem] p-5 md:p-6 overflow-hidden relative animate-in fade-in slide-in-from-bottom-4 duration-500 ${className}`}
+    onClick={onClick}
   >
-    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50" />
     {children}
   </div>
 );
 
-const FuturisticHeader = ({ title, subtitle }: { title: string, subtitle: string }) => (
-  <div className="mb-6 border-l-4 border-cyan-500 pl-6 relative">
-    <div className="absolute -left-[5px] top-0 h-3 w-3 bg-cyan-500 rounded-full shadow-[0_0_10px_#22d3ee] animate-pulse" />
-    <h2 className="text-xl md:text-2xl font-black uppercase tracking-[0.1em] text-white flex items-center gap-3">
+const ModuleHeader = ({ title, subtitle, icon: Icon, color = "border-cyan-500" }: { title: string, subtitle: string, icon?: any, color?: string }) => (
+  <div className={`mb-4 border-l-2 ${color} pl-4 relative`}>
+    <div className={`absolute -left-[5px] top-0 h-2 w-2 ${color.replace('border', 'bg')} rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]`} />
+    <h2 className="text-base md:text-lg font-bold uppercase tracking-tight text-white flex items-center gap-2">
+      {Icon && <Icon className="w-4 h-4 text-inherit" />}
       {title}
     </h2>
-    <p className="text-[10px] text-cyan-500/80 font-mono font-bold uppercase tracking-[0.3em] mt-1.5">{subtitle}</p>
+    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{subtitle}</p>
   </div>
 );
 
-const LockedSectionWrapper = ({ isUnlocked, children, onLockClick, lockLabel = "Premium Feature" }: { isUnlocked: boolean, children?: React.ReactNode, onLockClick?: () => void, lockLabel?: string }) => {
-  if (isUnlocked) return <div className="animate-in fade-in duration-700">{children}</div>;
-  
-  return (
-    <div 
-      className="relative group/locked cursor-pointer overflow-hidden rounded-2xl" 
-      onClick={onLockClick}
-    >
-      <div className="blur-md grayscale select-none pointer-events-none opacity-30 transition-all duration-700 group-hover/locked:opacity-50">
-        {children}
-      </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-20 group-hover/locked:scale-105 transition-transform duration-500">
-        <div className="w-12 h-12 bg-cyan-500/10 rounded-full flex items-center justify-center border border-cyan-500/20 mb-4 animate-pulse shadow-[0_0_15px_rgba(34,211,238,0.15)]">
-          <Lock className="w-6 h-6 text-cyan-400" />
-        </div>
-        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-500 drop-shadow-md">
-          {lockLabel} Locked
-        </span>
-        <span className="mt-2 text-[8px] font-bold text-white/40 uppercase tracking-widest opacity-0 group-hover/locked:opacity-100 transition-opacity">Click to Unlock</span>
-      </div>
-    </div>
-  );
-};
-
-const ScoreRing = ({ score, label, color = "stroke-blue-500", size = "w-20 h-20 md:w-24 md:h-24" }: { score: number, label: string, color?: string, size?: string }) => {
+const GaugeScore = ({ score, label, color = "stroke-cyan-500", size = "w-20 h-20" }: { score: number, label: string, color?: string, size?: string }) => {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  
   return (
-    <div className="flex flex-col items-center group shrink-0 transition-transform duration-500 hover:scale-110">
+    <div className="flex flex-col items-center">
       <div className={`relative ${size}`}>
         <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
           <circle cx="48" cy="48" r={radius} className="stroke-white/5 fill-none" strokeWidth="4" />
-          <circle 
-            cx="48" cy="48" r={radius} 
-            className={`fill-none transition-all duration-1000 ease-out ${color} group-hover:brightness-125`} 
-            strokeWidth="6" 
-            strokeDasharray={circumference} 
-            strokeDashoffset={offset} 
-            strokeLinecap="round" 
-          />
+          <circle cx="48" cy="48" r={radius} className={`fill-none transition-all duration-1000 ease-out ${color}`} strokeWidth="8" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl md:text-2xl font-black tracking-tighter text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{score.toFixed(0)}</span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg font-black text-white">{score.toFixed(0)}</span>
         </div>
       </div>
-      <span className="mt-3 text-[8px] md:text-[9px] font-black text-gray-500 uppercase tracking-[0.25em] text-center group-hover:text-cyan-400 transition-colors">{label}</span>
+      <span className="mt-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center">{label}</span>
     </div>
   );
 };
 
-const ATSMeter = ({ score }: { score: number }) => (
-  <div className="flex flex-col items-center justify-center p-6 glass-panel rounded-3xl glow-border-cyan border-cyan-500/20 bg-cyan-950/10 w-full sm:w-auto min-w-[220px] group transition-all duration-500 hover:bg-cyan-900/10">
-    <div className="flex items-center gap-3 mb-4">
-      <Binary className="w-5 h-5 text-cyan-400 animate-pulse" />
-      <span className="text-[10px] md:text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em]">ATS Reliability</span>
-    </div>
-    <div className="text-5xl md:text-6xl font-black tracking-tighter text-white drop-shadow-[0_0_20px_rgba(34,211,238,0.6)] group-hover:scale-110 transition-transform duration-500">
-      {score.toFixed(0)}<span className="text-xl text-cyan-500/50">/100</span>
-    </div>
-    <div className="w-full h-1.5 bg-white/5 rounded-full mt-5 overflow-hidden">
-      <div 
-        className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-all duration-[2500ms] ease-out" 
-        style={{ width: `${score}%` }} 
-      />
-    </div>
-    <p className="text-[8px] text-gray-500 mt-4 uppercase font-bold tracking-[0.2em] text-center opacity-60 group-hover:opacity-100 transition-opacity">Neural Scan Simulation Complete</p>
-  </div>
-);
-
-const BulletCritiqueRow = ({ item, index, isUnlocked, onLockClick }: { item: any, index: number, isUnlocked: boolean, onLockClick: () => void }) => {
-  const [showRewrites, setShowRewrites] = useState(false);
-  
+const ProtocolLock = ({ isUnlocked, onUnlockClick, title, header, children, benefits = [] }: any) => {
   return (
-    <div className="border-b border-white/5 py-8 md:py-10 last:border-0 group relative animate-in fade-in slide-in-from-left-8 duration-700 fill-mode-both" style={{ animationDelay: `${index * 150}ms` }}>
-      <div className="flex items-start gap-5 md:gap-10">
-        <div className={`mt-2 h-4 w-4 rounded-sm rotate-45 shrink-0 border-2 transition-all duration-500 group-hover:rotate-[225deg] ${
-          item.risk === 'Safe' ? 'border-emerald-500 bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : item.risk === 'Needs Evidence' ? 'border-yellow-500 bg-yellow-500/20 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'border-red-500 bg-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-        }`} />
-        <div className="flex-1">
-          <p className="text-base md:text-lg text-gray-100 font-medium leading-relaxed italic mb-6 group-hover:text-white transition-colors">"{item.original}"</p>
-          
-          <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Impact Audit" onLockClick={onLockClick}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
-              <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/5 relative overflow-hidden group/audit hover:border-cyan-500/30 transition-all duration-500">
-                <div className="flex items-center gap-3 mb-3 text-cyan-400">
-                  <ShieldAlert className="w-5 h-5 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em]">Critical Logic Audit</span>
+    <div className="relative">
+      {header}
+      <div className="relative">
+        {!isUnlocked && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-8 text-center animate-in fade-in duration-500">
+            <div className="absolute inset-0 z-10 backdrop-blur-[120px] bg-slate-950/45 rounded-3xl border border-white/10" />
+            
+            <div className="relative z-40 bg-slate-900/60 p-10 rounded-[2.5rem] border border-cyan-500/30 shadow-[0_0_80px_rgba(34,211,238,0.15)] max-w-sm w-full text-center">
+              <div className="w-16 h-16 bg-cyan-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-cyan-500/30">
+                <Lock className="w-8 h-8 text-cyan-400 animate-pulse" />
+              </div>
+              <h4 className="text-sm font-black text-white uppercase tracking-tighter mb-4">{title}</h4>
+              
+              {benefits.length > 0 && (
+                <div className="space-y-3 mb-8 text-left">
+                  {benefits.map((benefit: string, idx: number) => (
+                    <div key={idx} className="flex items-center gap-3 animate-in slide-in-from-left duration-300" style={{ animationDelay: `${idx * 100}ms` }}>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-[10px] text-slate-100 font-bold uppercase tracking-wider">{benefit}</span>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-400 leading-relaxed italic group-hover/audit:text-slate-300 transition-colors">{item.critique}</p>
-              </div>
-              <div className="space-y-4">
-                <div className="bg-red-950/10 border border-red-500/10 px-5 py-3 rounded-2xl flex items-center justify-between hover:bg-red-900/10 transition-colors">
-                  <span className="text-[10px] text-red-500 font-black uppercase tracking-widest">Weakness</span>
-                  <span className="text-[11px] text-gray-300 font-bold truncate ml-3">{item.weakness}</span>
-                </div>
-                <div className="bg-indigo-950/10 border border-indigo-500/10 px-5 py-3 rounded-2xl flex items-center justify-between hover:bg-indigo-900/10 transition-colors">
-                  <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Signal Gap</span>
-                  <span className="text-[11px] text-gray-300 font-bold truncate ml-3">{item.soWhatGap}</span>
-                </div>
-              </div>
-            </div>
-            
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowRewrites(!showRewrites); }}
-              className={`flex items-center gap-4 px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.4em] transition-all relative overflow-hidden group/rev ${
-                showRewrites ? 'bg-cyan-500 text-black shadow-2xl shadow-cyan-500/40' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <Zap className={`w-4 h-4 transition-transform duration-500 group-hover/rev:scale-125 ${showRewrites ? 'fill-black animate-pulse' : ''}`} />
-              {showRewrites ? 'Hide Rewrites' : 'VIEW REWRITES'}
-            </button>
+              )}
 
-            {showRewrites && (
-              <div className="mt-6 space-y-5 animate-in slide-in-from-top-6 duration-700 stagger-children">
-                 {item.rewrites?.map((rw: string, i: number) => (
-                  <div key={i} className="bg-cyan-500/5 border border-cyan-500/10 p-5 rounded-[2rem] relative group/rw hover:bg-cyan-500/10 transition-all duration-500">
-                     <div className="flex justify-between items-center mb-3">
-                       <span className="text-[10px] text-cyan-400 font-black uppercase tracking-widest flex items-center gap-2">
-                         <CheckCircle2 className="w-4 h-4" /> REWRITE OPTION 0{i+1}
-                       </span>
-                       <span className="text-[9px] px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full font-black italic tracking-tighter">ELITE KPI</span>
-                     </div>
-                     <p className="text-sm md:text-base text-gray-100 leading-relaxed italic font-medium">"{rw}"</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </LockedSectionWrapper>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const RecruiterTipCard = ({ tip, index }: { tip: any, index: number }) => {
-  const getColors = () => {
-    switch (tip.type) {
-      case 'strength': return { border: 'border-emerald-500/10', bg: 'bg-emerald-500/5', text: 'text-emerald-400', icon: CheckCircle2 };
-      case 'issue': return { border: 'border-yellow-500/10', bg: 'bg-yellow-500/5', text: 'text-yellow-400', icon: AlertCircle };
-      case 'risk': return { border: 'border-red-500/10', bg: 'bg-red-500/5', text: 'text-red-400', icon: ShieldAlert };
-      default: return { border: 'border-white/5', bg: 'bg-white/5', text: 'text-white', icon: Info };
-    }
-  };
-
-  const getImpactColors = (impact: string) => {
-    switch (impact) {
-      case 'High': return 'text-red-500 bg-red-500/10 border-red-500/20';
-      case 'Moderate': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
-      case 'Low': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
-      default: return 'text-slate-500 bg-slate-500/10 border-slate-500/20';
-    }
-  };
-
-  const colors = getColors();
-  const Icon = colors.icon;
-
-  return (
-    <div 
-      className={`p-6 rounded-3xl border-2 ${colors.border} ${colors.bg} space-y-4 mb-5 last:mb-0 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl relative group animate-in slide-in-from-right-8 fade-in`}
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      <div className="flex items-center justify-between">
-        <div className={`flex items-center gap-3 ${colors.text}`}>
-          <Icon className="w-5 h-5 group-hover:scale-125 transition-transform duration-500" />
-          <span className="text-[11px] font-black uppercase tracking-[0.3em]">{tip.type}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest border ${getImpactColors(tip.impact)}`}>
-            {tip.impact}
-          </span>
-        </div>
-      </div>
-      <p className="text-[12px] md:text-sm text-gray-200 font-medium italic leading-relaxed group-hover:text-white transition-colors">"{tip.content}"</p>
-    </div>
-  );
-};
-
-const VerdictBadge = ({ status }: { status: AnalysisResult['verdict']['status'] }) => {
-  const configMap: Record<string, any> = {
-    Shortlist: { 
-      icon: ThumbsUp, 
-      color: 'bg-emerald-500 text-black', 
-      border: 'border-emerald-500', 
-      glow: 'shadow-[0_0_30px_rgba(16,185,129,0.5)]',
-      label: 'RECOMMENDED'
-    },
-    Borderline: { 
-      icon: AlertOctagon, 
-      color: 'bg-yellow-500 text-black', 
-      border: 'border-yellow-500', 
-      glow: 'shadow-[0_0_30px_rgba(245,158,11,0.5)]',
-      label: 'BORDERLINE'
-    },
-    Reject: { 
-      icon: ThumbsDown, 
-      color: 'bg-red-500 text-white', 
-      border: 'border-red-500', 
-      glow: 'shadow-[0_0_30px_rgba(239,68,68,0.5)]',
-      label: 'NOT RECOMMENDED'
-    }
-  };
-
-  const currentStatus = status || 'Borderline';
-  const config = configMap[currentStatus] || configMap.Borderline;
-  const Icon = config.icon || Info;
-
-  return (
-    <div className={`flex items-center gap-4 px-8 py-4 rounded-3xl ${config.color} ${config.border} border-2 ${config.glow} font-black tracking-tighter animate-in zoom-in duration-700 hover:scale-110 transition-transform`}>
-      <Icon className="w-7 h-7 shrink-0 animate-bounce" />
-      <span className="text-2xl md:text-3xl uppercase tracking-tighter">{config.label}</span>
-    </div>
-  );
-};
-
-const AdvancedHeatmapOverlay = ({ result }: { result: AnalysisResult }) => {
-  const [showPath, setShowPath] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => setShowPath(true), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const gazePoints = useMemo(() => {
-    const points: { x: number, y: number, score: number, id: string }[] = [];
-    const sections = result.eyeTrackingHeatmap || [];
-    
-    sections.slice(0, 4).forEach((s, idx) => {
-      const count = Math.min(Math.ceil(s.attentionScore / 3) + 1, 3);
-      for (let i = 0; i < count; i++) {
-        points.push({
-          x: 20 + Math.random() * 60,
-          y: (idx * 25) + 10 + Math.random() * 10,
-          score: s.attentionScore,
-          id: `${idx}-${i}`
-        });
-      }
-    });
-    return points;
-  }, [result]);
-
-  const generateGazePath = () => {
-    if (gazePoints.length < 2) return "";
-    return gazePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x}% ${p.y}%`).join(" ");
-  };
-
-  return (
-    <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden rounded-md opacity-60 mix-blend-screen transition-opacity duration-1000">
-      <div className="heatmap-scanner" />
-      
-      {gazePoints.map((p) => {
-        const color = p.score > 7 ? 'rgba(239, 68, 68, 0.3)' : p.score > 4 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 211, 238, 0.15)';
-        const size = 20 + (p.score * 6);
-        return (
-          <div 
-            key={p.id}
-            className="absolute fixation-node rounded-full"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: `${size}px`,
-              height: `${size}px`,
-              marginLeft: `-${size/2}px`,
-              marginTop: `-${size/2}px`,
-              background: `radial-gradient(circle, ${color} 0%, transparent 80%)`,
-              boxShadow: `0 0 ${size/3}px ${color}`
-            }}
-          />
-        );
-      })}
-
-      {showPath && (
-        <svg className="absolute inset-0 w-full h-full opacity-20">
-          <path 
-            d={generateGazePath()} 
-            fill="none" 
-            stroke="rgba(34, 211, 238, 0.3)" 
-            strokeWidth="1" 
-            className="gaze-line"
-          />
-        </svg>
-      )}
-    </div>
-  );
-};
-
-const ForensicDocumentView = ({ result, isUnlocked, onLockClick }: { result: AnalysisResult, isUnlocked: boolean, onLockClick: () => void }) => {
-  const heatmapMap = useMemo(() => {
-    return result.eyeTrackingHeatmap?.reduce((acc, curr) => {
-      acc[curr.section.toLowerCase()] = curr.attentionScore;
-      return acc;
-    }, {} as Record<string, number>) || {};
-  }, [result]);
-
-  const getHeatIntensity = (section: string) => {
-    const score = heatmapMap[section.toLowerCase()] || 0;
-    if (score >= 8) return 'rgba(239, 68, 68, 0.12)';
-    if (score >= 5) return 'rgba(245, 158, 11, 0.08)';
-    return 'rgba(34, 211, 238, 0.04)';
-  };
-
-  return (
-    <div className={`relative mx-auto w-full max-w-4xl bg-white text-black p-10 md:p-14 min-h-[700px] md:min-h-[1200px] shadow-[0_0_120px_rgba(0,0,0,0.9)] border border-gray-100 rounded-[4px] font-serif group overflow-hidden animate-in fade-in zoom-in duration-1000`}>
-      <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]" />
-      
-      {isUnlocked && <AdvancedHeatmapOverlay result={result} />}
-
-      <header className="text-center mb-12 md:mb-16 border-b-[2px] border-black pb-8 relative z-20">
-        <h1 className="text-3xl md:text-5xl font-bold uppercase mb-2 tracking-normal px-4">{result.extractedData.name}</h1>
-        <div className="text-[10px] md:text-[11px] text-gray-500 flex justify-center gap-4 font-sans font-bold uppercase tracking-[0.1em] flex-wrap px-6">
-           {result.extractedData.contact}
-        </div>
-      </header>
-      
-      <div className="space-y-10 md:space-y-14 relative z-20">
-        {['Education', 'Experience', 'Skills', 'Projects'].map(section => (
-          <section key={section} className="relative p-8 rounded-3xl transition-all duration-700">
-            <div 
-              className="absolute inset-0 rounded-3xl z-[-1]" 
-              style={{ backgroundColor: getHeatIntensity(section), border: `1px solid ${getHeatIntensity(section).replace('0.15', '0.3').replace('0.1', '0.2').replace('0.05', '0.1')}` }} 
-            />
-            
-            {isUnlocked && (
-              <div className={`absolute -top-4 right-6 px-3 py-1 rounded-xl bg-black text-white text-[9px] font-black flex items-center gap-3 shadow-md`}>
-                <Scan className="w-3 h-3 text-cyan-400" /> BIOMETRIC FOCUS: {(heatmapMap[section.toLowerCase()] || 0) * 10}%
-              </div>
-            )}
-            
-            <h2 className="text-lg md:text-2xl font-bold border-b-[2px] border-black uppercase mb-6 pb-2 tracking-[0.05em]">{section}</h2>
-            
-            <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Forensic Document Data" onLockClick={onLockClick}>
-              <div className="space-y-3 md:space-y-4">
-                 {section === 'Education' && result.extractedData.education?.map((edu, i) => <p key={i} className="text-xs md:text-sm font-semibold">{edu}</p>)}
-                 {section === 'Experience' && result.extractedData.experience?.map((exp, i) => (
-                   <div key={i} className="text-xs md:text-sm">
-                      <p className="font-bold mb-2 uppercase tracking-tight">{exp}</p>
-                      <div className="w-full h-1.5 bg-black/[0.05] rounded-full mb-2" />
-                      <div className="w-4/5 h-1.5 bg-black/[0.05] rounded-full" />
-                   </div>
-                 ))}
-                 {section === 'Skills' && <div className="flex flex-wrap gap-3">{result.extractedData.skills?.map((skill, i) => <span key={i} className="text-xs md:text-sm font-bold border-b border-black/10">/ {skill}</span>)}</div>}
-                 {section === 'Projects' && (result.extractedData.projects?.length > 0 ? result.extractedData.projects.map((p, i) => <p key={i} className="text-xs md:text-sm italic">{p}</p>) : <p className="text-[11px] text-gray-400 italic">No specific projects detected.</p>)}
-              </div>
-            </LockedSectionWrapper>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* Component to display processing status logs */
-const ProcessLog = () => {
-  const [logs, setLogs] = useState<string[]>([]);
-  const logEntries = ["ANALYZING DOCUMENT STRUCTURE...", "EXTRACTING EXPERIENCE METRICS...", "SIMULATING RECRUITER SCAN...", "CHECKING ATS COMPLIANCE...", "MAPPING INDUSTRY KEYWORDS...", "AUDITING IMPACT...", "VALIDATING QUALIFICATIONS...", "SYNTHESIZING FEEDBACK...", "OPTIMIZING FLOW..."];
-  useEffect(() => {
-    let i = 0;
-    const interval = setInterval(() => { setLogs(prev => [...prev.slice(-3), logEntries[i]]); i = (i + 1) % logEntries.length; }, 800);
-    return () => clearInterval(interval);
-  }, []);
-  return (
-    <div className="h-32 overflow-hidden flex flex-col justify-end items-center gap-3 px-6 w-full max-sm:max-w-xs">
-      {logs.map((log, idx) => (
-        <p key={idx} className={`text-[10px] md:text-[11px] font-mono uppercase tracking-[0.3em] transition-all duration-700 text-center ${idx === logs.length - 1 ? 'text-cyan-400 font-bold opacity-100 shimmer-text scale-110' : 'text-cyan-900 opacity-20'}`}>{log}</p>
-      ))}
-    </div>
-  );
-};
-
-const AboutMeModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-      <GlassCard className="max-w-2xl w-full relative z-10 !p-12 border-cyan-500/30 overflow-hidden animate-in fade-in zoom-in duration-300">
-        <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors z-20">
-          <X className="w-6 h-6" />
-        </button>
-        
-        <div className="flex flex-col md:flex-row items-center gap-12 relative z-10">
-          <div className="relative group shrink-0">
-            <div className="absolute -inset-4 bg-cyan-500/20 blur-2xl rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
-            <div className="w-40 h-40 md:w-56 md:h-56 rounded-full overflow-hidden border-4 border-cyan-500/40 relative z-10 shadow-[0_0_50px_rgba(34,211,238,0.25)] bg-slate-900">
-              <img 
-                src="https://media.licdn.com/dms/image/v2/D4D03AQE_E_X_O_L_V_A/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1718224765620?e=1746662400&v=beta&t=k6O_7_4N_T_N_N_N_N_N_N_N_N_N_N_N_N" 
-                alt="Lovish Singhal" 
-                className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700"
-                onError={(e) => {
-                   (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=Lovish+Singhal&background=0891b2&color=fff&size=256";
-                }}
-              />
+              <button 
+                onClick={onUnlockClick} 
+                className="w-full py-4 bg-cyan-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500 transition-all shadow-xl flex items-center justify-center gap-3 group active:scale-95"
+              >
+                <Unlock className="w-4 h-4 group-hover:rotate-12 transition-transform" /> Reveal Report
+              </button>
             </div>
           </div>
-
-          <div className="flex-1 space-y-6 text-center md:text-left">
-            <div className="space-y-1">
-              <h2 className="text-4xl md:text-5xl font-black italic text-white uppercase tracking-tighter drop-shadow-lg">
-                Lovish Singhal
-              </h2>
-              <p className="text-cyan-400 text-xs font-black uppercase tracking-[0.4em] flex items-center justify-center md:justify-start gap-3">
-                <Sparkles className="w-3 h-3 animate-pulse" /> Creator & Visionary
-              </p>
-            </div>
-            
-            <p className="text-slate-300 text-sm md:text-base leading-relaxed italic font-medium opacity-90 border-l-2 border-cyan-500/30 pl-4">
-              "I want every professional to grow and reach their full potential. Career paths can be complex, 
-              and my mission is to build intelligent tools that demystify recruitment, provide brutally honest 
-              feedback, and level the playing field for global talent."
-            </p>
-
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-4">
-              <a 
-                href="https://www.linkedin.com/in/calovishsinghal/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="flex items-center gap-3 px-6 py-3 bg-blue-600/10 border border-blue-600/30 rounded-xl text-[11px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-lg hover:-translate-y-1"
-              >
-                <Linkedin className="w-4 h-4" /> LinkedIn Profile
-              </a>
-              <a 
-                href="mailto:Lovishsinghal2003@gmail.com" 
-                className="flex items-center gap-3 px-6 py-3 bg-slate-800 border border-white/10 rounded-xl text-[11px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all shadow-lg hover:-translate-y-1"
-              >
-                <Mail className="w-4 h-4" /> Email Me
-              </a>
-            </div>
-          </div>
+        )}
+        <div className={!isUnlocked ? 'opacity-20 pointer-events-none grayscale' : ''}>
+          {children}
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
+}
+
+// --- IMPACT UTILS ---
+const getImpactConfig = (impact: string) => {
+  switch (impact) {
+    case 'High':
+      return { icon: <XCircle className="w-3 h-3" />, color: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-400/20' };
+    case 'Moderate':
+      return { icon: <AlertTriangle className="w-3 h-3" />, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' };
+    case 'Low':
+    default:
+      return { icon: <CheckCircle2 className="w-3 h-3" />, color: 'text-cyan-400', bg: 'bg-cyan-400/10', border: 'border-cyan-400/20' };
+  }
 };
 
-const PremiumLockOverlay = ({ onUnlock, onBack }: { onUnlock: () => void, onBack: () => void }) => {
-  const missingFeatures = [
-    { 
-      icon: Eye, 
-      title: "Recruiter Heatmap", 
-      desc: "Stop the guessing. See exactly where MDs drop off. Uncover 'Dead Zones' in your profile.",
-      color: "text-red-400"
-    },
-    { 
-      icon: Scan, 
-      title: "ATS-Ready Word Doc", 
-      desc: "Instant download. A perfectly formatted .docx file engineered to bypass modern filters.",
-      color: "text-cyan-400"
-    },
-    { 
-      icon: Zap, 
-      title: "Bullet Refiner AI", 
-      desc: "Line-by-line corporate logic critiques. Transform weak bullets into Elite KPI-driven wins.",
-      color: "text-indigo-400"
-    },
-    { 
-      icon: Target, 
-      title: "Partner-Level Audit", 
-      desc: "Brutally honest forensic analysis. Discover why you're really getting ghosted.",
-      color: "text-emerald-400"
-    }
+// --- HEATMAP COMPONENT ---
+
+const HeatmapVisualizer = ({ data }: { data: AnalysisResult['eyeTrackingHeatmap'] }) => {
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+
+  const getHeatColor = (score: number) => {
+    if (score >= 80) return 'bg-red-500/30 border-red-500/60';
+    if (score >= 60) return 'bg-orange-500/25 border-orange-500/50';
+    if (score >= 40) return 'bg-yellow-500/20 border-yellow-500/40';
+    return 'bg-emerald-500/15 border-emerald-500/30';
+  };
+
+  const activeData = useMemo(() => 
+    data.find(d => d.section.toLowerCase().includes((hoveredSection || "").toLowerCase())), 
+    [data, hoveredSection]
+  );
+
+  const sections = [
+    { id: 'Header', top: '5%', height: '10%' },
+    { id: 'Summary', top: '16%', height: '12%' },
+    { id: 'Experience', top: '30%', height: '35%' },
+    { id: 'Education', top: '67%', height: '15%' },
+    { id: 'Skills', top: '84%', height: '10%' },
   ];
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 md:p-10 pointer-events-auto">
-      <div className="absolute inset-0 bg-[#020617] overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.4)_0%,#020617_100%)]" />
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+      <div className="md:col-span-7 relative group">
+        <div className="w-full aspect-[1/1.4] bg-white rounded-lg p-8 flex flex-col gap-6 relative shadow-2xl overflow-hidden border border-white/10">
+           {/* Section Overlays */}
+           {sections.map(s => {
+             const heat = data.find(d => d.section.toLowerCase().includes(s.id.toLowerCase())) || { attentionScore: 0 };
+             return (
+               <div 
+                 key={s.id}
+                 onMouseEnter={() => setHoveredSection(s.id)}
+                 onMouseLeave={() => setHoveredSection(null)}
+                 style={{ top: s.top, height: s.height }}
+                 className={`absolute left-0 right-0 z-20 transition-all duration-300 cursor-crosshair border-y-2 border-transparent hover:z-30 ${getHeatColor(heat.attentionScore)} ${hoveredSection === s.id ? 'ring-4 ring-cyan-400 ring-inset border-cyan-400/50 shadow-[0_0_30px_rgba(34,211,238,0.4)]' : ''}`}
+               >
+                 {hoveredSection === s.id && (
+                   <div className="absolute top-2 right-4 flex items-center gap-2 animate-in zoom-in duration-300">
+                     <span className="px-2 py-0.5 bg-black text-white text-[8px] font-black uppercase rounded-full">Telemetric Link</span>
+                   </div>
+                 )}
+               </div>
+             );
+           })}
+
+           {/* High-Fidelity Mock Content */}
+           <div className="space-y-2">
+             <div className="h-6 w-1/3 bg-slate-200 rounded" />
+             <div className="h-2 w-1/2 bg-slate-100 rounded" />
+           </div>
+           
+           <div className="space-y-1 mt-4">
+             <div className="h-3 w-full bg-slate-100 rounded" />
+             <div className="h-3 w-full bg-slate-100 rounded" />
+             <div className="h-3 w-3/4 bg-slate-100 rounded" />
+           </div>
+
+           <div className="mt-8 space-y-6">
+             {[1, 2, 3].map(i => (
+               <div key={i} className="space-y-3">
+                 <div className="flex justify-between items-center">
+                   <div className="h-4 w-1/4 bg-slate-200 rounded" />
+                   <div className="h-3 w-1/6 bg-slate-100 rounded" />
+                 </div>
+                 <div className="space-y-1.5">
+                   <div className="h-2 w-full bg-slate-50 rounded" />
+                   <div className="h-2 w-full bg-slate-50 rounded" />
+                   <div className="h-2 w-[90%] bg-slate-50 rounded" />
+                 </div>
+               </div>
+             ))}
+           </div>
+           
+           <div className="mt-auto py-4 border-t border-slate-100 flex justify-between items-center opacity-40">
+             <div className="h-2 w-20 bg-slate-100 rounded" />
+             <div className="h-2 w-20 bg-slate-100 rounded" />
+           </div>
+        </div>
+        
+        <div className="absolute inset-0 heatmap-scanner opacity-30 pointer-events-none z-40" />
       </div>
 
-      <div className="relative w-full max-w-6xl h-full max-h-[90vh] glass-panel !bg-slate-950/40 rounded-[3rem] border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col animate-in zoom-in duration-500">
-        <div className="overflow-y-auto flex-1 p-8 md:p-16 flex flex-col items-center">
-          <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[10px] font-black uppercase tracking-[0.4em] mb-12">
-              <Sparkles className="w-4 h-4 animate-pulse" /> Premium Unlock Required
-          </div>
-          
-          <h3 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tight text-center mb-6 drop-shadow-2xl italic">
-            Unlock Your <span className="text-cyan-400">Full Forensic Report</span>
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mb-16">
-            {missingFeatures.map((f, i) => (
-              <div key={i} className="bg-white/5 border border-white/5 p-8 rounded-3xl flex flex-col items-center md:items-start text-center md:text-left group hover:bg-white/[0.07] transition-all duration-500 animate-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms` }}>
-                <div className={`w-14 h-14 rounded-2xl bg-slate-900/50 flex items-center justify-center ${f.color} mb-6 group-hover:scale-110 transition-all shadow-inner border border-white/5`}>
-                  <f.icon className="w-7 h-7 animate-pulse" />
-                </div>
-                <h4 className="text-lg font-black text-white uppercase tracking-tight mb-3 italic">{f.title}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed font-medium">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="w-full max-w-xl bg-cyan-500/5 border border-cyan-500/20 p-10 rounded-[2.5rem] flex flex-col items-center gap-8 shadow-[0_0_80px_rgba(34,211,238,0.1)] mb-10">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.5em] mb-3">Instant Lifetime Access (Per Scan)</span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black text-white">$9.99</span>
-                <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest line-through">$24.99</span>
-              </div>
+      <div className="md:col-span-5 flex flex-col">
+        <GlassCard className="flex-1 !p-8 border-cyan-500/10 flex flex-col justify-center min-h-[450px]">
+          {!hoveredSection ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-700">
+               <div className="relative">
+                  <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full animate-pulse" />
+                  <div className="relative w-20 h-20 rounded-[2rem] bg-slate-950 border border-cyan-500/30 flex items-center justify-center">
+                    <Fingerprint className="w-10 h-10 text-cyan-400" />
+                  </div>
+               </div>
+               <div className="space-y-2">
+                 <h4 className="text-sm font-black text-white uppercase tracking-widest">Awaiting Telemetry</h4>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-relaxed">Hover report zones to extract <br/>recruiter gaze analytics</p>
+               </div>
             </div>
-            
-            <button 
-              onClick={(e) => { e.stopPropagation(); onUnlock(); }}
-              className="w-full relative overflow-hidden bg-cyan-500 text-black px-12 py-6 rounded-2xl flex items-center justify-center gap-4 transition-all hover:bg-cyan-400 hover:scale-[1.02] shadow-[0_20px_60px_rgba(8,145,178,0.4)] active:scale-95 group/pay cursor-pointer z-[170]"
-            >
-              <CreditCard className="w-6 h-6 animate-pulse" />
-              <div className="flex flex-col items-start text-left">
-                <span className="text-[18px] font-black uppercase tracking-widest">Pay & Unlock Full Analysis</span>
-                <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Secure Stripe Payment</span>
-              </div>
-            </button>
-            
-            <button onClick={onBack} className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors cursor-pointer flex items-center gap-2 group">
-              <ArrowRight className="w-3 h-3 rotate-180 group-hover:-translate-x-1 transition-transform" /> Return to Summary View
-            </button>
-          </div>
-        </div>
+          ) : (
+            <div className="flex-1 space-y-8 animate-in slide-in-from-right duration-400 text-left">
+               <div className="flex justify-between items-start border-b border-white/5 pb-6">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">Protocol Node</p>
+                    <h3 className="text-3xl font-black text-white uppercase tracking-tighter">{hoveredSection}</h3>
+                  </div>
+                  <div className="px-4 py-3 bg-slate-900 border border-white/10 rounded-2xl text-right shadow-inner">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Attention Score</p>
+                    <p className={`text-2xl font-black ${activeData && activeData.attentionScore > 75 ? 'text-red-400' : 'text-cyan-400'}`}>
+                      {activeData?.attentionScore || 0}%
+                    </p>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <ModuleHeader title="Forensic Core Analysis" subtitle="AI Section Diagnosis" icon={Radar} color="border-cyan-500/40" />
+                  <div className="p-6 bg-cyan-600/5 border border-cyan-500/20 rounded-2xl relative overflow-hidden group">
+                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-30 transition-opacity">
+                        <Activity className="w-12 h-12 text-cyan-400" />
+                     </div>
+                     <p className="text-[11px] text-slate-200 leading-relaxed italic relative z-10">
+                        "{activeData?.feedback || 'Telemetry lock successful. Section integrity verified by AI decision node.'}"
+                     </p>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest border-l-2 border-slate-700 pl-3">Recruiter Intelligence</p>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="p-5 bg-slate-950/60 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-colors">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Retention Risk</p>
+                        <div className="flex items-center gap-2">
+                           <div className={`w-2 h-2 rounded-full ${activeData && activeData.attentionScore < 45 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+                           <p className="text-xs font-black text-white uppercase tracking-tighter">{activeData && activeData.attentionScore < 45 ? 'CRITICAL' : 'NOMINAL'}</p>
+                        </div>
+                     </div>
+                     <div className="p-5 bg-slate-950/60 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-colors">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Impact Density</p>
+                        <div className="flex items-center gap-2">
+                           <div className={`w-2 h-2 rounded-full ${activeData && activeData.attentionScore > 80 ? 'bg-cyan-400' : 'bg-orange-500'}`} />
+                           <p className="text-xs font-black text-white uppercase tracking-tighter">{activeData && activeData.attentionScore > 80 ? 'SATURATED' : 'SPARSE'}</p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
+        </GlassCard>
       </div>
     </div>
   );
 };
 
+// --- MAIN APPLICATION ---
+
 export default function App() {
-  const [state, setState] = useState<AppState>({ file: null, industry: Industry.AUDIT, region: Region.US, jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null });
-  const [isExporting, setIsExporting] = useState(false);
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [state, setState] = useState<AppState>({ 
+    user: null, currentPage: 'home', file: null, industry: Industry.TECH, region: Region.INDIA, 
+    jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null, plans: DEFAULT_PLANS
+  });
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([]);
   
+  const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
+  const [fullPrepDeck, setFullPrepDeck] = useState<InterviewQuestion[] | null>(null);
+  const [showDeckModal, setShowDeckModal] = useState(false);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'model', text: string}[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const saved = localStorage.getItem('resume_iq_v10');
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        if (p.users) setUsers(p.users);
+        if (p.history) setAnalysisHistory(p.history);
+        if (p.plans) setState(prev => ({ ...prev, plans: p.plans }));
+      } catch(e) {}
+    }
+    
     const handleMouseMove = (e: MouseEvent) => {
-      document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`);
-      document.documentElement.style.setProperty('--mouse-y', `${e.clientY}px`);
+        document.body.style.setProperty('--mouse-x', `${e.clientX}px`);
+        document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('resume_iq_v10', JSON.stringify({ users, history: analysisHistory, plans: state.plans }));
+  }, [users, analysisHistory, state.plans]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, isChatOpen]);
+
+  const handleLogin = (u: any) => {
+    const existing = users.find(ex => ex.email === u.email);
+    const userToSet: User = existing || {
+      ...u,
+      xp: 0,
+      level: 1,
+      badges: [],
+      completedTasks: []
+    };
+    if (!existing) setUsers(prev => [...prev, userToSet]);
+    setState(p => ({ ...p, user: userToSet, currentPage: 'home' }));
+  };
+
+  const onAdminAuth = (success: boolean) => {
+    if (success) {
+      const adminUser = users.find(u => u.role === 'admin') || {
+        id: 'admin_root', name: 'Admin', email: 'admin@resumecore.ai', picture: '', role: 'admin' as const, isBlocked: false, suspiciousActivity: false, createdAt: Date.now(), tokenBalance: 999,
+        xp: 9999, level: 99, badges: [], completedTasks: []
+      };
+      setState(p => ({ ...p, user: adminUser, currentPage: 'admin' }));
+    } else {
+      alert("Denied.");
+    }
+  };
+
+  const updateUserXP = (amount: number) => {
+    if (!state.user) return;
+    const newXP = state.user.xp + amount;
+    const newLevel = Math.floor(newXP / 500) + 1;
+    const updatedUser = { ...state.user, xp: newXP, level: newLevel };
+    setUsers(prev => prev.map(u => u.id === state.user!.id ? updatedUser : u));
+    setState(prev => ({ ...prev, user: updatedUser }));
+  };
+
+  const toggleTask = (taskId: string) => {
+    if (!state.user) return;
+    const isCompleted = state.user.completedTasks.includes(taskId);
+    const updatedTasks = isCompleted 
+      ? state.user.completedTasks.filter(id => id !== taskId)
+      : [...state.user.completedTasks, taskId];
+    
+    const xpChange = isCompleted ? -50 : 50;
+    const updatedUser = { ...state.user, completedTasks: updatedTasks };
+    
+    setUsers(prev => prev.map(u => u.id === state.user!.id ? { ...updatedUser, xp: state.user!.xp + xpChange } : u));
+    setState(prev => ({ ...prev, user: { ...updatedUser, xp: state.user!.xp + xpChange } }));
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
-    // Updated supported types to include docx
-    const supportedTypes = [
-      'application/pdf', 
-      'text/plain', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    
-    if (!supportedTypes.includes(file.type)) { 
-      setState(prev => ({ ...prev, error: 'File format not supported. Please use PDF, DOCX, or Text.' })); 
-      return; 
-    }
-    
-    setState(prev => ({ ...prev, file, isAnalyzing: true, error: null, analysisPhase: 'Reading document...' }));
-    setIsUnlocked(false); 
-    setShowPayModal(false);
-    
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
+
+    setState(p => ({ ...p, file, isAnalyzing: true, analysisPhase: 'Establishing Secure Protocol...', error: null }));
+    setIsUnlocked(false);
+    setFullPrepDeck(null);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
         const base64 = (reader.result as string).split(',')[1];
-        const phases = ["Neural Deep-Scan Logic...", "Evaluating industry relevance...", "Checking ATS scoring factors...", "Generating insights...", "Finalizing analysis report..."];
-        let i = 0;
-        const interval = setInterval(() => { 
-          if (i < phases.length) { 
-            setState(prev => ({ ...prev, analysisPhase: phases[i] })); 
-            i++; 
-          } 
-        }, 1200);
-
-        try {
-          const result = await analyzeResume(base64, file.type, state.industry, state.region, state.jobDescription, (p) => {
-            setState(prev => ({ ...prev, analysisPhase: p }));
-          });
-          clearInterval(interval);
-          setState(prev => ({ ...prev, result, isAnalyzing: false, analysisPhase: '' }));
-        } catch (e: any) { 
-          clearInterval(interval); 
-          setState(prev => ({ ...prev, isAnalyzing: false, error: e.message || 'Analysis encountered an error. Please try again.' })); 
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) { 
-      setState(prev => ({ ...prev, isAnalyzing: false, error: 'System error. Please refresh.' })); 
-    }
-  };
-
-  const simulatePayment = () => {
-    setShowPayModal(false);
-    setState(prev => ({ ...prev, isAnalyzing: true, analysisPhase: 'Securing Gateway...' }));
-    
-    setTimeout(() => {
-      setState(prev => ({ ...prev, analysisPhase: 'Processing $9.99 Secure Payment...' }));
-      setTimeout(() => {
-        setIsUnlocked(true);
-        setState(prev => ({ ...prev, isAnalyzing: false, analysisPhase: '' }));
-        setTimeout(() => {
-          dashboardRef.current?.querySelector('#premium-content-gate')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 300);
-      }, 1500);
-    }, 800);
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!state.result) return;
-    setIsExporting(true);
-    
-    try {
-      const reportElement = document.getElementById('full-forensic-report-container');
-      if (!reportElement) {
-        throw new Error("Analysis container not found");
+        const result = await analyzeResume(
+          base64, file.type, state.industry, state.region, state.jobDescription, 
+          (phase) => setState(prev => ({ ...prev, analysisPhase: phase }))
+        );
+        
+        const resultWithIds = {
+          ...result,
+          recruiterTips: (result.recruiterTips || []).map((t: any, idx: number) => ({ ...t, id: `task-${Date.now()}-${idx}` }))
+        };
+        
+        const finalResult = { ...resultWithIds, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now(), userId: state.user?.id || 'guest' };
+        
+        await new Promise(r => setTimeout(r, 800));
+        
+        setState(prev => ({ ...prev, result: finalResult, isAnalyzing: false }));
+        updateUserXP(100); 
+      } catch (e) { 
+        console.error(e);
+        setState(p => ({ ...p, isAnalyzing: false, error: 'Analysis failed. Document too complex.' })); 
       }
+    };
+    reader.readAsDataURL(file);
+  };
 
-      const canvas = await html2canvas(reportElement, {
-        scale: 1.5,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#020617',
-        windowWidth: 1400,
-        ignoreElements: (el) => el.classList.contains('no-print')
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`${state.result.extractedData.name.replace(/\s+/g, '_')}_Career_Intelligence_Dossier.pdf`);
-    } catch (err) {
-      console.error("PDF Export failed", err);
-      alert("Failed to generate Full Intelligence PDF. Please try again.");
-    } finally {
-      setIsExporting(false);
+  const confirmUnlock = () => {
+    if (!state.user) {
+      setState(p => ({ ...p, currentPage: 'login' }));
+      setShowUnlockModal(false);
+      return;
+    }
+    if (state.user.tokenBalance <= 0) {
+      setShowUnlockModal(false);
+      setShowPayModal(true);
+      return;
+    }
+    const updatedUser = { ...state.user, tokenBalance: state.user.tokenBalance - 1 };
+    setUsers(users.map(u => u.id === state.user!.id ? updatedUser : u));
+    setState(prev => ({ ...prev, user: updatedUser }));
+    setIsUnlocked(true);
+    setShowUnlockModal(false);
+    updateUserXP(250);
+    if (state.result && !analysisHistory.find(h => h.id === state.result!.id)) {
+      setAnalysisHistory(prev => [state.result!, ...prev]);
     }
   };
 
-  const handleDownloadDOCX = async () => {
+  const handleGenerateFullDeck = async () => {
+    if (!state.result) return;
+    setIsGeneratingDeck(true);
+    try {
+      const deck = await generateFullPrepDeck(state.result.idealResumeContent.summary, state.industry, state.jobDescription);
+      setFullPrepDeck(deck);
+      setShowDeckModal(true);
+      updateUserXP(150);
+    } catch (e) {
+      alert("Prep deck failure.");
+    } finally {
+      setIsGeneratingDeck(false);
+    }
+  };
+
+  const handleSendChatMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+    const userMsg = chatInput.trim();
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setChatInput("");
+    setIsChatLoading(true);
+    try {
+      const history = chatMessages.map(m => ({ role: m.role, parts: [{ text: m.text }] }));
+      const botResponse = await chatWithAssistant(userMsg, history);
+      setChatMessages(prev => [...prev, { role: 'model', text: botResponse || "Issue rephrasing..." }]);
+    } catch (e) {
+      setChatMessages(prev => [...prev, { role: 'model', text: "Service unavailable." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  const downloadReportPDF = async () => {
+    if (!state.result) return;
+    const element = document.getElementById('analysis-report');
+    if (!element) return;
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#020617' });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`Report_${state.result.extractedData.name}.pdf`);
+  };
+
+  const downloadImprovedDOCX = async () => {
     if (!state.result) return;
     const { idealResumeContent, extractedData } = state.result;
-    
-    const doc = new Document({
-      sections: [{
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: extractedData.name, bold: true, size: 36 })],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 300 },
-            children: [new TextRun({ text: extractedData.contact, size: 20 })],
-          }),
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
-            children: [new TextRun({ text: "PROFESSIONAL SUMMARY", bold: true })],
-          }),
-          new Paragraph({
-            spacing: { before: 100, after: 300 },
-            children: [new TextRun({ text: idealResumeContent.summary, size: 22 })],
-          }),
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
-            children: [new TextRun({ text: "PROFESSIONAL EXPERIENCE", bold: true })],
-          }),
-          ...idealResumeContent.experience.flatMap(exp => [
-            new Paragraph({
-              spacing: { before: 200 },
-              children: [
-                new TextRun({ text: exp.company, bold: true, size: 24 }),
-                new TextRun({ text: ` | ${exp.period}`, size: 20 }),
-              ],
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: exp.role, italic: true, bold: true, size: 22 })],
-            }),
-            ...exp.bullets.map(bullet => 
-              new Paragraph({
-                bullet: { level: 0 },
-                spacing: { before: 50 },
-                children: [new TextRun({ text: bullet, size: 22 })],
-              })
-            )
-          ]),
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 300 },
-            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
-            children: [new TextRun({ text: "EDUCATION", bold: true })],
-          }),
-          ...idealResumeContent.education.flatMap(edu => [
-            new Paragraph({
-              spacing: { before: 100 },
-              children: [
-                new TextRun({ text: edu.school, bold: true, size: 24 }),
-                new TextRun({ text: ` | ${edu.year}`, size: 20 }),
-              ],
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: edu.degree, size: 22 }),
-                edu.honors ? new TextRun({ text: ` (${edu.honors})`, italic: true, size: 22 }) : new TextRun({ text: "" }),
-              ],
-            }),
-          ]),
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 300 },
-            border: { bottom: { color: "auto", space: 1, value: BorderStyle.SINGLE, size: 6 } },
-            children: [new TextRun({ text: "CORE SKILLS & TECHNOLOGIES", bold: true })],
-          }),
-          new Paragraph({
-            spacing: { before: 100 },
-            children: [new TextRun({ text: idealResumeContent.skills.join(" • "), size: 22 })],
-          }),
-        ],
-      }],
-    });
-
+    const sections = [{
+      children: [
+        new Paragraph({ text: extractedData.name, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+        new Paragraph({ text: extractedData.contact || "", alignment: AlignmentType.CENTER }),
+        new Paragraph({ text: "" }),
+        new Paragraph({ text: "SUMMARY", heading: HeadingLevel.HEADING_2 }),
+        new Paragraph({ children: [new TextRun({ text: idealResumeContent.summary })] }),
+        new Paragraph({ text: "" }),
+        new Paragraph({ text: "WORK EXPERIENCE", heading: HeadingLevel.HEADING_2 }),
+        ...idealResumeContent.experience.flatMap(exp => [
+          new Paragraph({ children: [new TextRun({ text: `${exp.company} | ${exp.role}`, bold: true }), new TextRun({ text: `\t${exp.period}`, italic: true })], alignment: AlignmentType.LEFT }),
+          ...exp.bullets.map(b => new Paragraph({ text: b, bullet: { level: 0 } })),
+          new Paragraph({ text: "" }),
+        ]),
+        new Paragraph({ text: "EDUCATION", heading: HeadingLevel.HEADING_2 }),
+        ...idealResumeContent.education.map(edu => new Paragraph({ children: [new TextRun({ text: `${edu.school} - ${edu.degree}`, bold: true }), new TextRun({ text: ` (${edu.year})`, italic: true })] })),
+        new Paragraph({ text: "" }),
+        new Paragraph({ text: "SKILLS", heading: HeadingLevel.HEADING_2 }),
+        new Paragraph({ text: idealResumeContent.skills.join(", ") }),
+      ],
+      footers: { default: new DocxFooter({ children: [new Paragraph({ children: [new TextRun({ text: "Optimized by Resume Core AI", color: "888888", size: 16 })], alignment: AlignmentType.CENTER })] }) },
+    }];
+    const doc = new Document({ sections });
     const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `${extractedData.name.replace(/\s+/g, '_')}_ATS_Optimized.docx`;
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `Optimization_${extractedData.name}.docx`;
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
-
-  const handleReset = () => {
-    setState({ file: null, industry: Industry.AUDIT, region: Region.US, jobDescription: '', isAnalyzing: false, analysisPhase: '', result: null, error: null });
-    setIsUnlocked(false);
-    setShowPayModal(false);
-  };
-
-  const triggerPayModal = () => setShowPayModal(true);
-
-  const ReportFooter = ({ className = "" }: { className?: string }) => (
-    <footer className={`w-full py-16 border-t border-white/5 bg-slate-950/40 ${className}`}>
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 items-start mb-12">
-          <div className="md:col-span-4 space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <Scan className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-black text-xl tracking-tighter uppercase italic text-white">RESUME ANALYZER</span>
-            </div>
-            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
-              Using artificial intelligence to provide real, actionable feedback for professionals who want to level up their career game.
-            </p>
-          </div>
-          
-          <div className="md:col-span-4 flex flex-col gap-6 text-center md:text-left">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.5em] text-cyan-500 border-b border-white/5 pb-2">Creator Vision</h4>
-            <div className="bg-white/5 p-6 rounded-3xl border border-white/5 group hover:border-cyan-500/30 transition-all">
-              <p className="text-[12px] text-slate-300 italic leading-relaxed">"I want every professional to grow and reach their full potential. Career paths can be complex, and my mission is to build intelligent tools that level the field."</p>
-              <button onClick={() => setIsAboutOpen(true)} className="mt-6 flex items-center justify-center md:justify-start gap-3 text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 cursor-pointer transition-colors no-print">
-                Meet the Creator <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="md:col-span-4 space-y-8 flex flex-col items-center md:items-end">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-500 border-b border-white/5 pb-2 w-full md:text-right">Connect</h4>
-            <div className="flex items-center gap-6">
-              <a href="https://www.linkedin.com/in/calovishsinghal/" target="_blank" rel="noopener noreferrer" className="p-4 bg-white/5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-blue-600 transition-all hover:scale-110 shadow-lg">
-                <Linkedin className="w-5 h-5" />
-              </a>
-              <a href="mailto:Lovishsinghal2003@gmail.com" className="p-4 bg-white/5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:bg-cyan-600 transition-all hover:scale-110 shadow-lg">
-                <Mail className="w-5 h-5" />
-              </a>
-            </div>
-          </div>
-        </div>
-        
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 px-4">
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">
-            &copy; 2026 RESUME ANALYZER &bull; ALL RIGHTS RESERVED
-          </p>
-          <div className="flex items-center gap-8 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-            <span className="hover:text-cyan-500 cursor-pointer transition-colors">Privacy Policy</span>
-            <span className="hover:text-cyan-500 cursor-pointer transition-colors">Terms of Service</span>
-            <span className="hover:text-cyan-500 cursor-pointer transition-colors">Stripe Secure</span>
-          </div>
-        </div>
-      </footer>
-  );
 
   return (
-    <div className="min-h-screen selection:bg-cyan-500/30 flex flex-col bg-[#020617] transition-all duration-700">
-      <AboutMeModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
-
-      {showPayModal && <PremiumLockOverlay onUnlock={simulatePayment} onBack={() => setShowPayModal(false)} />}
-      
-      {(isExporting || state.isAnalyzing) && (
-        <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center space-y-12 p-10 text-center animate-in fade-in duration-500">
-          <div className="relative">
-            <Loader2 className="w-24 h-24 text-cyan-400 animate-spin opacity-40" />
-            <Zap className="w-10 h-10 text-cyan-400 absolute inset-0 m-auto animate-pulse drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
+    <div className="min-h-screen flex flex-col bg-[#020617] text-slate-200">
+      <nav className="w-full h-16 md:h-20 flex items-center justify-between px-6 md:px-12 glass-panel sticky top-0 z-[100] backdrop-blur-[60px] border-b border-white/10">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setState(p => ({ ...p, currentPage: 'home', result: null }))}>
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-tr from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
+            <Scan className="w-5 h-5 text-white" />
           </div>
-          <div className="space-y-6 flex flex-col items-center max-w-lg">
-            <h3 className="text-3xl font-serif-premium italic text-white tracking-[0.2em] uppercase shimmer-text">
-                {isExporting ? "Generating Report Dossier" : "Analyzing Your Resume"}
-            </h3>
-            <p className="text-[12px] font-black text-cyan-500 uppercase tracking-[0.8em] animate-pulse">
-                {state.analysisPhase || "Finalizing..."}
-            </p>
-            <ProcessLog />
-          </div>
+          <span className="font-black text-lg md:text-xl uppercase tracking-tighter text-white">RESUME <span className="text-cyan-400">CORE</span></span>
         </div>
-      )}
-
-      <nav className="w-full max-w-[1600px] mx-auto px-6 md:px-12 h-20 md:h-24 flex items-center justify-between shrink-0 glass-panel border-b border-white/5 z-[80] sticky top-0 no-print">
-        <div className="flex items-center gap-4 group cursor-pointer" onClick={handleReset}>
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-cyan-600 rounded-2xl flex items-center justify-center shadow-[0_0_25px_rgba(8,145,178,0.4)] shrink-0 transition-transform group-hover:rotate-[360deg] duration-1000">
-            <Scan className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          </div>
-          <span className="font-black text-2xl md:text-3xl tracking-tighter uppercase italic text-white whitespace-nowrap group-hover:shimmer-text">RESUME <span className="text-cyan-500">ANALYZER</span></span>
+        
+        <div className="flex items-center gap-4">
+          {state.user ? (
+            <>
+              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
+                 <Award className="w-4 h-4 text-yellow-500" />
+                 <span className="text-[10px] font-black text-white uppercase tracking-widest">LVL {state.user.level}</span>
+                 <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-500" style={{ width: `${(state.user.xp % 500) / 5}%` }} />
+                 </div>
+              </div>
+              <button onClick={() => setState(p => ({ ...p, currentPage: state.currentPage === 'dashboard' ? 'home' : 'dashboard' }))} className={`px-4 py-2 rounded-xl border text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${state.currentPage === 'dashboard' ? 'bg-cyan-600 border-cyan-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}>
+                <LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">My Stats</span>
+              </button>
+              <button onClick={() => setState(p => ({ ...p, user: null, currentPage: 'home', result: null }))} className="p-2.5 bg-white/5 border border-white/10 text-slate-500 hover:text-red-500 rounded-xl transition-colors">
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setState(p => ({ ...p, currentPage: 'login' }))} className="px-6 py-2.5 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-cyan-400 transition-all shadow-xl">Login</button>
+          )}
         </div>
-
-        {state.result && (
-          <button 
-              onClick={handleReset}
-              className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-cyan-500 hover:text-black transition-all hover:scale-105 active:scale-95 group"
-          >
-              <PlusCircle className="w-5 h-5 text-cyan-400 group-hover:text-black transition-colors" />
-              <span className="hidden sm:inline">New Analysis</span>
-          </button>
-        )}
       </nav>
 
-      <main className="flex-1 w-full max-w-[1600px] mx-auto px-6 md:px-12 py-10 md:py-16 relative" ref={dashboardRef}>
-        {!state.result ? (
-          <div className="w-full max-w-5xl mx-auto flex flex-col items-center justify-center space-y-12 md:space-y-16 animate-in fade-in duration-1000 mt-8">
-            <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[11px] font-black uppercase tracking-[0.4em] animate-float shadow-[0_0_20px_rgba(34,211,238,0.1)]">
-                <Sparkles className="w-4 h-4 animate-pulse" /> Advanced AI Evaluation
-            </div>
-
-            <div className="text-center space-y-8">
-                <h1 className="text-7xl md:text-9xl font-serif-premium font-bold tracking-tight text-white leading-tight animate-in slide-in-from-top-8 duration-1000">
-                    AI <span className="text-cyan-400 italic shimmer-text">Career Partner</span>
-                </h1>
-                <p className="text-base md:text-xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
-                    Get an expert recruiter's perspective on your resume instantly. Upload your file to see what hiring managers really think.
-                </p>
-            </div>
-
-            <div className="w-full max-w-4xl space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 px-1">
-                    <Target className="w-4 h-4 text-cyan-500" />
-                    <label className="text-xs font-black text-slate-300 uppercase tracking-widest">
-                      Target Job Description (Optional)
-                    </label>
-                  </div>
-                  <textarea 
-                    value={state.jobDescription}
-                    onChange={(e) => setState(prev => ({ ...prev, jobDescription: e.target.value }))}
-                    placeholder="Paste the job you're applying for here to get a tailored audit against specific requirements..."
-                    className="w-full bg-slate-900/40 border border-white/5 rounded-3xl p-6 text-sm text-slate-200 focus:border-cyan-500/50 outline-none h-48 custom-scrollbar resize-none glass-panel"
-                  />
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-6 py-6 md:py-10">
+        {state.currentPage === 'admin-login' ? (
+          <AdminLoginPage onAdminAuth={onAdminAuth} />
+        ) : state.currentPage === 'admin' ? (
+          <AdminDashboard users={users} analysisHistory={analysisHistory} plans={state.plans} onBack={() => setState(p => ({ ...p, currentPage: 'home' }))} onUpdatePlans={(newPlans: Plan[]) => setState(p => ({ ...p, plans: newPlans }))} />
+        ) : state.currentPage === 'login' ? (
+          <LoginPage onLogin={handleLogin} />
+        ) : state.currentPage === 'dashboard' && state.user ? (
+          <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end text-left">
+                <div className="lg:col-span-8">
+                  <ModuleHeader title={`Welcome back, ${state.user.name}`} icon={UserIcon} subtitle="Your Career Intelligence Command Center" />
                 </div>
-
-                <div className="relative group h-full">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 rounded-[3rem]" />
-                  <div 
-                    onClick={() => !state.isAnalyzing && fileInputRef.current?.click()}
-                    className="relative h-full p-8 md:p-12 bg-slate-950/50 border-2 border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center text-center transition-all group-hover:border-cyan-500/60 shadow-2xl backdrop-blur-3xl cursor-pointer"
-                  >
-                    <div className="w-16 h-16 bg-cyan-950/40 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(34,211,238,0.15)] group-hover:shadow-[0_0_60px_rgba(34,211,238,0.3)] transition-all duration-700">
-                      <FileUp className="w-8 h-8 text-cyan-400 group-hover:scale-110 transition-transform duration-500" />
-                    </div>
-                    <h2 className="text-xl md:text-2xl font-serif-premium font-bold text-white mb-2 uppercase tracking-tight">
-                      Drop Resume Here
-                    </h2>
-                    <p className="text-slate-500 text-[11px] font-medium mb-8 uppercase tracking-[0.2em]">
-                      PDF, DOCX, or Text Files Supported
-                    </p>
-                    
-                    <button 
-                      className="group/btn relative overflow-hidden bg-[#0f172a] border border-white/20 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-cyan-600 hover:text-black transition-all flex items-center gap-3 shadow-xl active:scale-95 disabled:opacity-50"
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span>Select File</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".pdf,.txt,.docx" className="hidden" />
-            </div>
-          </div>
-        ) : (
-          <div className="w-full space-y-12 md:space-y-20 pb-24" id="full-forensic-report-container">
-            {/* Dossier Header Info - Only visible in PDF */}
-            <div className="hidden pdf-only flex justify-between items-center mb-10 border-b border-white/10 pb-6 px-10 pt-10">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-cyan-600 rounded-xl flex items-center justify-center">
-                  <Scan className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-black text-2xl uppercase italic text-white">RESUME ANALYZER</span>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-cyan-500 font-black uppercase tracking-widest">Forensic Dossier ID: RA-{Date.now().toString().slice(-6)}</p>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Confidential Intelligence Report</p>
-              </div>
-            </div>
-
-            <div className="glass-panel p-10 rounded-[3rem] border border-cyan-500/20 grid grid-cols-1 xl:grid-cols-4 gap-12 animate-in fade-in slide-in-from-top-12 duration-1000">
-               <div className="xl:col-span-1 flex flex-col items-center xl:border-r border-white/5 pr-4">
-                  <ScoreRing score={state.result.resumeIQ} label="RESUME IQ" size="w-28 h-28 md:w-40 md:h-40" color="stroke-cyan-500" />
-                  <div className="mt-6 text-center">
-                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em]">Neural Audit Score</p>
-                  </div>
-               </div>
-               <div className="xl:col-span-3 space-y-10">
-                  <div className="flex flex-wrap items-center justify-between gap-6">
-                     <h1 className="text-4xl md:text-6xl font-black text-white italic">{state.result.extractedData.name}</h1>
-                     <VerdictBadge status={state.result.verdict.status} />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                     <ATSMeter score={state.result.atsReadability} />
-                     <div className="p-6 glass-panel rounded-3xl flex flex-col items-center justify-center text-center">
-                        <TrendingUp className="w-8 h-8 text-emerald-400 mb-3" />
-                        <p className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em]">Market Relevance</p>
-                        <p className="text-2xl font-black text-white italic">{state.result.skillsIntelligence.marketRelevance}</p>
-                     </div>
-                     <div className="p-6 glass-panel rounded-3xl flex flex-col items-center justify-center text-center">
-                        <Scan className="w-8 h-8 text-cyan-400 mb-3" />
-                        <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em]">Formatting Diagnosis</p>
-                        <p className="text-sm font-bold text-white italic truncate max-w-full">{state.result.formattingDiagnosis[0] || 'Optimized'}</p>
-                     </div>
-                  </div>
-               </div>
-            </div>
-
-            <div className="relative" id="premium-content-gate">
-              <div className="space-y-12 md:space-y-20">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
-                   <div className="lg:col-span-3">
-                      <FuturisticHeader title="Recruiter Eye-Track" subtitle="Predicted Focus Areas" />
-                      <ForensicDocumentView result={state.result} isUnlocked={isUnlocked} onLockClick={triggerPayModal} />
+                <div className="lg:col-span-4 flex justify-end gap-3">
+                   <div className="px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center gap-3">
+                      <Zap className="w-4 h-4 text-indigo-400 animate-pulse" />
+                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{state.user.tokenBalance} Credits</span>
                    </div>
-                   <div className="lg:col-span-2 space-y-8">
-                      <FuturisticHeader title="Expert Insights" subtitle="Narrative Analysis" />
-                      <LockedSectionWrapper isUnlocked={isUnlocked} lockLabel="Expert Analysis" onLockClick={triggerPayModal}>
-                        {state.result.recruiterTips?.map((tip, i) => <RecruiterTipCard key={i} tip={tip} index={i} />)}
-                      </LockedSectionWrapper>
+                   <div className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex items-center gap-3">
+                      <Star className="w-4 h-4 text-yellow-400" />
+                      <span className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">{state.user.xp} XP</span>
                    </div>
                 </div>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
+                <GlassCard className="p-6 border-cyan-500/10 group">
+                  <Activity className="w-6 h-6 text-cyan-400 mb-4 group-hover:scale-110 transition-transform" />
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Audits</p>
+                  <p className="text-4xl font-black text-white">{analysisHistory.filter(h => h.userId === state.user!.id).length}</p>
+                </GlassCard>
+                <GlassCard className="p-6 border-indigo-500/10 group">
+                  <Gauge className="w-6 h-6 text-indigo-400 mb-4 group-hover:scale-110 transition-transform" />
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Global Rank</p>
+                  <p className="text-4xl font-black text-white">#{Math.max(1, 100 - state.user.level * 2)}%</p>
+                </GlassCard>
+                <button onClick={() => setShowPayModal(true)} className="md:col-span-2 p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-center justify-between hover:bg-emerald-500/10 transition-all group overflow-hidden">
+                   <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                   <div className="flex items-center gap-6">
+                      <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                        <Plus className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Insufficient Credits?</p>
+                        <p className="text-lg font-black text-white uppercase tracking-tight">Replenish Scan Tokens</p>
+                      </div>
+                   </div>
+                   <ChevronRight className="w-6 h-6 text-emerald-500" />
+                </button>
+             </div>
 
-                <div className="relative">
-                   <FuturisticHeader title="Impact Audit" subtitle="Line-by-Line Refinement" />
-                   <GlassCard className="relative">
-                      <div className="divide-y divide-white/5 space-y-6">
-                         {state.result.bulletCritiques?.map((item, i) => (
-                           <BulletCritiqueRow key={i} item={item} index={i} isUnlocked={isUnlocked} onLockClick={triggerPayModal} />
-                         ))}
+             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
+                <div className="lg:col-span-8 space-y-8">
+                   <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                            <ListTodo className="w-4 h-4 text-cyan-400" />
+                            <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em]">Tactical Action checklist</h3>
+                         </div>
+                         <span className="text-[9px] font-bold text-slate-500 uppercase">+50 XP PER TASK</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {analysisHistory.filter(h => h.userId === state.user!.id).length > 0 ? (
+                           analysisHistory.filter(h => h.userId === state.user!.id)[0].recruiterTips.map((tip) => {
+                             const isCompleted = state.user?.completedTasks.includes(tip.id);
+                             const impactInfo = getImpactConfig(tip.impact);
+                             return (
+                               <div 
+                                 key={tip.id} 
+                                 onClick={() => toggleTask(tip.id)}
+                                 className={`p-5 rounded-2xl border transition-all cursor-pointer flex gap-4 items-start ${
+                                   isCompleted 
+                                   ? 'bg-emerald-500/10 border-emerald-500/20 opacity-60' 
+                                   : 'bg-white/[0.03] border-white/5 hover:border-cyan-500/20'
+                                 }`}
+                               >
+                                  <div className={`mt-1 rounded-full p-1 ${isCompleted ? 'bg-emerald-500' : 'bg-slate-800'}`}>
+                                     {isCompleted ? <Check className="w-3 h-3 text-white" /> : <CircleDashed className="w-3 h-3 text-slate-500" />}
+                                  </div>
+                                  <div className="text-left space-y-2 flex-1">
+                                     <div className="flex justify-between items-start gap-2">
+                                        <p className={`text-xs font-bold ${isCompleted ? 'text-emerald-400 line-through' : 'text-white'}`}>{tip.issue}</p>
+                                        <div className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-tighter ${impactInfo.color} ${impactInfo.bg} ${impactInfo.border}`}>
+                                           {impactInfo.icon} {tip.impact}
+                                        </div>
+                                     </div>
+                                     <p className="text-[10px] text-slate-500 italic leading-relaxed">Fix: {tip.rectification.slice(0, 80)}...</p>
+                                  </div>
+                               </div>
+                             );
+                           })
+                        ) : (
+                          <div className="col-span-2 p-12 bg-white/[0.02] border border-white/5 rounded-[2rem] text-center">
+                             <CircleDashed className="w-10 h-10 text-slate-700 mx-auto mb-4 animate-spin-slow" />
+                             <p className="text-xs text-slate-500 uppercase font-bold">Complete your first scan to generate actions.</p>
+                          </div>
+                        )}
+                      </div>
+                   </div>
+                </div>
+                
+                <div className="lg:col-span-4 space-y-8">
+                   <GlassCard className="p-8 border-indigo-500/20 bg-indigo-500/5">
+                      <div className="flex flex-col items-center text-center">
+                         <div className="relative w-24 h-24 mb-6">
+                            <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse" />
+                            <div className="relative z-10 w-full h-full bg-slate-900 rounded-[2rem] border border-indigo-500/40 flex items-center justify-center">
+                               <span className="text-4xl font-black text-white">{state.user.level}</span>
+                            </div>
+                         </div>
+                         <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-1">Career Mastery</h4>
+                         <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.4em] mb-6">Level {state.user.level} Practitioner</p>
+                         
+                         <div className="w-full space-y-2">
+                            <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase">
+                               <span>{state.user.xp % 500} XP</span>
+                               <span>Next LVL: 500 XP</span>
+                            </div>
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                               <div className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" style={{ width: `${(state.user.xp % 500) / 5}%` }} />
+                            </div>
+                         </div>
                       </div>
                    </GlassCard>
                 </div>
-
-                {!isUnlocked && (
-                  <div className="mt-20 py-16 flex flex-col items-center justify-center bg-cyan-950/5 border-2 border-dashed border-cyan-500/10 rounded-[3rem] p-10 text-center animate-in fade-in duration-1000 no-print">
-                    <div className="w-16 h-16 bg-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(34,211,238,0.2)] animate-bounce cursor-pointer" onClick={triggerPayModal}>
-                      <Lock className="w-8 h-8 text-black" />
+             </div>
+          </div>
+        ) : !state.result ? (
+          <div className="w-full max-w-4xl mx-auto flex flex-col items-center space-y-12 md:space-y-16 py-8 md:py-16 text-center animate-in fade-in duration-700 relative text-left">
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-64 bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none" />
+             <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl animate-pulse mx-auto">
+                <Sparkles className="w-4 h-4" /> Professional Resume Feedback
+             </div>
+             <div className="space-y-4 text-center">
+                <h1 className="text-4xl md:text-7xl font-black text-white tracking-tighter leading-none uppercase">
+                  Fix Your <span className="text-cyan-400 italic">Resume</span>
+                </h1>
+                <p className="text-slate-400 max-w-xl mx-auto text-sm md:text-lg font-light leading-relaxed px-6">
+                  "Most resumes never reach a human. We help you fix your points so you can pass filters and get more interviews."
+                </p>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full mt-8">
+                <div className="md:col-span-5 text-left space-y-3">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1"><Target className="w-4 h-4" /> Target Job Profile</label>
+                  <textarea 
+                    value={state.jobDescription} 
+                    onChange={e => setState(p => ({ ...p, jobDescription: e.target.value }))} 
+                    placeholder="Paste the Job Description (JD) here..." 
+                    className="w-full bg-slate-900/60 border border-white/5 rounded-2xl p-6 text-sm text-white outline-none h-[300px] resize-none transition-all focus:border-cyan-500/40" 
+                  />
+                </div>
+                <div onClick={() => fileInputRef.current?.click()} className="md:col-span-7 p-10 border-2 border-dashed border-white/10 rounded-2xl bg-slate-900/30 flex flex-col items-center justify-center hover:border-cyan-500/40 cursor-pointer group transition-all relative overflow-hidden backdrop-blur-xl min-h-[300px]">
+                  <div className="w-16 h-16 md:w-24 md:h-24 bg-slate-950 rounded-2xl flex items-center justify-center mb-6 shadow-2xl group-hover:scale-105 transition-transform border border-white/5">
+                     <FileUp className="w-8 h-8 md:w-12 md:h-12 text-cyan-400" />
+                  </div>
+                  <h2 className="text-2xl md:text-4xl font-black text-white mb-2 uppercase tracking-tighter">Submit Resume</h2>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-10 text-center">PDF or DOCX Formats Only</p>
+                  <button className="px-10 py-4 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Select File From Computer</button>
+                </div>
+             </div>
+             {state.error && <p className="mt-8 text-red-400 font-bold text-sm uppercase tracking-widest animate-pulse mx-auto">{state.error}</p>}
+             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".pdf,.txt,.docx" className="hidden" />
+          </div>
+        ) : (
+          <div id="analysis-report" className="space-y-8 pb-24 animate-in fade-in duration-700 max-w-6xl mx-auto text-left">
+             {/* Report Summary */}
+             <div className="glass-panel p-6 md:p-8 rounded-2xl md:rounded-[3rem] border border-cyan-500/20 shadow-2xl overflow-hidden relative">
+               <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+                  <div className="shrink-0 flex flex-col items-center gap-6">
+                    <GaugeScore score={state.result.overallScore} label="OVERALL SCORE" size="w-32 h-32" color="stroke-cyan-500" />
+                    <div className="flex gap-2">
+                       <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black text-cyan-400">IQ</div>
+                       <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black text-indigo-400">V.10</div>
                     </div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4 shimmer-text">Forensic Intelligence Locked</h3>
-                    <p className="text-slate-400 text-sm max-w-md font-medium leading-relaxed mb-8 italic">
-                      Unlock partner-level forensics and ATS optimized profile generation.
-                    </p>
-                    <button 
-                      onClick={triggerPayModal}
-                      className="group relative bg-cyan-600 text-white px-10 py-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-cyan-500 hover:scale-105 shadow-xl font-black uppercase tracking-widest text-[11px] cursor-pointer"
-                    >
-                      Unlock Full Analysis Report <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
                   </div>
-                )}
+                  
+                  <div className="flex-1 space-y-6 w-full">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                      <div className="space-y-2">
+                        <h1 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter">{state.result.extractedData.name}</h1>
+                        <div className="flex gap-3">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">ID: 0x{state.result.id.toUpperCase()}</span>
+                          <span className="text-[9px] text-cyan-400 font-bold uppercase bg-cyan-400/5 px-3 py-1.5 rounded-lg border border-cyan-400/20">Target: {state.industry}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 w-full md:w-auto">
+                        {!isUnlocked ? (
+                          <button onClick={() => setShowUnlockModal(true)} className="px-8 py-4 bg-cyan-600 text-white font-black uppercase rounded-xl text-[10px] shadow-lg flex items-center justify-center gap-3 hover:bg-cyan-500 transition-all"><Unlock className="w-4 h-4" /> REVEAL FULL REPORT</button>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                             <button onClick={downloadReportPDF} className="px-4 py-3 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-black uppercase rounded-lg text-[9px] hover:bg-indigo-600 hover:text-white transition-all"><Download className="w-4 h-4" /> PDF REPORT</button>
+                             <button onClick={downloadImprovedDOCX} className="px-4 py-3 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-black uppercase rounded-lg text-[9px] hover:bg-emerald-600 hover:text-white transition-all"><FileDown className="w-4 h-4" /> WORD DOC</button>
+                          </div>
+                        )}
+                        <button onClick={() => { setState(p => ({ ...p, result: null, file: null, error: null })); setIsUnlocked(false); }} className="px-4 py-2 bg-white/5 border border-white/10 text-slate-500 hover:text-white rounded-lg text-[9px] font-bold uppercase transition-all flex items-center justify-center gap-2"><RefreshCcw className="w-3.5 h-3.5" /> START NEW SCAN</button>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+             </div>
 
-                {/* PDF Special Footer - replicating home page look */}
-                <div className="hidden pdf-only px-10">
-                   <ReportFooter className="bg-transparent border-t-white/10" />
+             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-8 space-y-10">
+                   {/* Heatmap Section */}
+                   <ProtocolLock 
+                      isUnlocked={isUnlocked} 
+                      onUnlockClick={() => setShowUnlockModal(true)} 
+                      title="Attention Architecture"
+                      header={<ModuleHeader title="Attention Heatmap" subtitle="Recruiter Eye-Tracking Simulation" icon={Eye} color="border-orange-500" />}
+                      benefits={['Hover to extract gaze remarks', 'Heat distribution diagnostic', 'Telemetric attention scores']}
+                   >
+                     <HeatmapVisualizer data={state.result.eyeTrackingHeatmap} />
+                   </ProtocolLock>
+
+                   <ProtocolLock 
+                      isUnlocked={isUnlocked} 
+                      onUnlockClick={() => setShowUnlockModal(true)} 
+                      title="ATS Tactical Diagnostic"
+                      header={<ModuleHeader title="ATS Forensic Scan" subtitle="How bots perceive your experience" icon={Binary} color="border-cyan-500" />}
+                      benefits={['Unlock specific keyword optimization map', 'Detect parsing obstacles', 'ATS visibility risk audit']}
+                   >
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <GlassCard className="md:col-span-4 p-8 flex flex-col items-center justify-center bg-slate-900/40 border-cyan-500/10">
+                           <GaugeScore score={state.result.atsReadability} label="ATS Readability" size="w-24 h-24" color="stroke-cyan-500" />
+                        </GlassCard>
+                        <div className="md:col-span-8 space-y-4">
+                           <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Scan className="w-3 h-3 text-cyan-400" /> Formatting Anomalies</h4>
+                              <div className="space-y-3">
+                                 {state.result.formattingDiagnosis.map((item, i) => (
+                                   <div key={i} className="flex gap-3 items-start group">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                                      <p className="text-xs text-slate-400 italic">{item}</p>
+                                   </div>
+                                 ))}
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                   </ProtocolLock>
+
+                   <ProtocolLock 
+                      isUnlocked={isUnlocked} 
+                      onUnlockClick={() => setShowUnlockModal(true)} 
+                      title="Recruiter Forensic Notes"
+                      header={<ModuleHeader title="The Hiring Panel's View" subtitle="Deep critique from a recruiter perspective" icon={AlertTriangle} color="border-red-500" />}
+                      benefits={['Brutal forensic audit of logic gaps', 'Executive branding risk assessment', 'High-impact bullet rewrites']}
+                   >
+                      <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             {state.result.recruiterTips?.map((t: any, i: number) => {
+                                const impactInfo = getImpactConfig(t.impact);
+                                return (
+                                  <GlassCard key={i} className="!p-6 border-white/5 group hover:bg-white/[0.04]">
+                                     <div className="flex items-center justify-between mb-6">
+                                        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[8px] font-black uppercase border ${impactInfo.color} ${impactInfo.bg} ${impactInfo.border}`}>
+                                          {impactInfo.icon} {t.impact} Impact
+                                        </div>
+                                     </div>
+                                     <p className="text-sm text-slate-100 italic border-l-2 border-white/10 pl-5 mb-8">"{t.issue}"</p>
+                                     <div className="p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-xs text-slate-400">
+                                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-3">AI RECTIFICATION</p>
+                                        {t.rectification}
+                                     </div>
+                                  </GlassCard>
+                                );
+                             })}
+                          </div>
+                      </div>
+                   </ProtocolLock>
                 </div>
 
-                <div className="pt-16 no-print">
-                  <div className="w-full relative group">
-                    <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-2xl opacity-20 rounded-[4rem]" />
-                    <GlassCard className="relative border-cyan-500/40 flex flex-col md:flex-row items-center justify-between gap-12 !p-16 md:!p-20 shadow-[0_0_100px_rgba(34,211,238,0.15)]">
-                      <div className="space-y-6 text-center md:text-left">
-                        <h2 className="text-5xl md:text-6xl font-serif-premium font-bold text-white tracking-tight uppercase italic">The <span className="text-cyan-400">Vault</span></h2>
-                        <p className="text-slate-400 text-base md:text-lg max-w-lg font-medium leading-relaxed italic">
-                          Download your full intelligence dossier or export your resume in a clean, ATS-optimized Word format.
-                        </p>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-8 w-full md:w-auto">
-                        <button onClick={isUnlocked ? handleDownloadPDF : triggerPayModal} className="group/btn relative bg-slate-900 border border-white/20 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 hover:border-cyan-500/70 transition-all min-w-[240px] cursor-pointer">
-                            <FileDown className="w-8 h-8 text-cyan-400" />
-                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">Full Dossier (PDF)</span>
-                        </button>
-                        <button onClick={isUnlocked ? handleDownloadDOCX : triggerPayModal} className="group/btn relative bg-cyan-600 px-12 py-8 rounded-[2.5rem] flex flex-col items-center gap-4 hover:bg-cyan-400 transition-all min-w-[240px] cursor-pointer shadow-[0_30px_60px_rgba(8,145,178,0.5)]">
-                            <ClipboardCheck className="w-8 h-8 text-white" />
-                            <span className="text-[14px] font-black uppercase tracking-[0.2em] text-white">ATS Optimized (DOCX)</span>
-                        </button>
-                      </div>
-                    </GlassCard>
-                  </div>
+                <div className="lg:col-span-4 space-y-10">
+                   <ProtocolLock 
+                      isUnlocked={isUnlocked} 
+                      onUnlockClick={() => setShowUnlockModal(true)} 
+                      title="Interview Prep Matrix"
+                      header={<ModuleHeader title="Scenario Training" icon={ShieldCheck} subtitle="Handling tough recruiter traps" color="border-indigo-500" />}
+                      benefits={['Unlock STAR framework guides', 'Predicted recruiter trap questions', 'Behavioral strategy map']}
+                   >
+                     <div className="space-y-6">
+                        <GlassCard className="!p-8 border-indigo-500/10 space-y-8 shadow-2xl">
+                           <div className="p-6 bg-slate-950/40 rounded-2xl border border-white/5">
+                              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-5">Your Tactical Response</p>
+                              <p className="text-xs text-slate-300 italic">"{state.result.narrativeRisk.interviewResponse}"</p>
+                           </div>
+                           <button 
+                             onClick={handleGenerateFullDeck}
+                             disabled={isGeneratingDeck}
+                             className="w-full py-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-4 group mt-6"
+                           >
+                             {isGeneratingDeck ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                             GENERATE FULL DECK
+                           </button>
+                        </GlassCard>
+                     </div>
+                   </ProtocolLock>
                 </div>
-              </div>
-            </div>
-
-            <div className="flex justify-center pt-12 no-print">
-               <button 
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-500 hover:text-cyan-400 transition-all flex items-center gap-4 group cursor-pointer"
-               >
-                 Back to Summit <ChevronRight className="w-4 h-4 transition-transform group-hover:-translate-y-2 rotate-[-90deg]" />
-               </button>
-            </div>
+             </div>
           </div>
         )}
       </main>
 
-      <ReportFooter className="no-print max-w-[1600px] mx-auto px-6 md:px-12" />
+      <Footer onAdminClick={() => setState(prev => ({ ...prev, currentPage: 'admin-login' }))} />
+
+      {/* Floating Chat Assistant */}
+      <div className={`fixed bottom-8 right-8 z-[500] transition-all duration-500 ${isChatOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+        <GlassCard className="w-[350px] md:w-[400px] h-[500px] flex flex-col border-cyan-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.8)] !p-0 overflow-hidden text-left">
+          <div className="p-4 border-b border-white/10 flex justify-between items-center bg-cyan-950/20">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <span className="text-[10px] font-black text-white uppercase tracking-widest">Core Assistant</span>
+            </div>
+            <button onClick={() => setIsChatOpen(false)} className="p-1 hover:text-cyan-400 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+            {chatMessages.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
+                <BrainCircuit className="w-10 h-10 text-slate-800" />
+                <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest leading-relaxed">
+                  Forensic AI active. Query any aspect of your career protocol.
+                </p>
+              </div>
+            )}
+            {chatMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] p-3 rounded-2xl text-[11px] leading-relaxed ${
+                  msg.role === 'user' 
+                  ? 'bg-cyan-600 text-white rounded-tr-none shadow-lg' 
+                  : 'bg-white/5 border border-white/10 text-slate-300 rounded-tl-none'
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {isChatLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white/5 border border-white/10 p-3 rounded-2xl rounded-tl-none flex gap-2">
+                  <div className="w-1 h-1 bg-cyan-500 rounded-full animate-bounce" />
+                  <div className="w-1 h-1 bg-cyan-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-1 h-1 bg-cyan-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="p-4 border-t border-white/10 bg-slate-950/60">
+            <div className="relative">
+              <input 
+                type="text" 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                placeholder="Input query..." 
+                className="w-full bg-slate-900 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-xs text-white outline-none focus:border-cyan-500/40"
+              />
+              <button 
+                onClick={handleSendChatMessage}
+                disabled={isChatLoading || !chatInput.trim()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-500 disabled:opacity-50 disabled:hover:bg-cyan-600 transition-all"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      {!isChatOpen && (
+        <button 
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-8 right-8 z-[501] w-14 h-14 bg-gradient-to-tr from-cyan-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-[0_10px_30px_rgba(34,211,238,0.3)] hover:scale-110 active:scale-95 transition-all group"
+        >
+          <MessageSquare className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-[#020617] flex items-center justify-center">
+            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+          </div>
+        </button>
+      )}
+
+      {/* Modals & Overlays */}
+      {showUnlockModal && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-black/98 backdrop-blur-[120px]" onClick={() => setShowUnlockModal(false)} />
+           <GlassCard className="max-w-md w-full relative z-[700] !p-12 text-center border-cyan-500/30 shadow-[0_0_100px_rgba(34,211,238,0.2)]">
+              <Zap className="w-12 h-12 text-cyan-400 mx-auto mb-6 animate-float" />
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-4 text-center">Finalize Protocol</h3>
+              <p className="text-xs text-slate-400 mb-10 text-center">This will consume 1 credit from your balance to unlock the full forensic report for this resume.</p>
+              <div className="p-6 bg-slate-950/60 rounded-3xl border border-white/5 flex justify-between items-center mb-10">
+                 <div className="text-left">
+                   <p className="text-[9px] font-bold text-slate-600 uppercase">Balance</p>
+                   <p className="text-2xl font-black text-white">{state.user?.tokenBalance}</p>
+                 </div>
+                 <ArrowRight className="text-slate-700" />
+                 <div className="text-right text-red-500">
+                   <p className="text-[9px] font-bold uppercase">New Balance</p>
+                   <p className="text-2xl font-black">{Math.max(0, (state.user?.tokenBalance || 0) - 1)}</p>
+                 </div>
+              </div>
+              <button onClick={confirmUnlock} className="w-full py-6 bg-cyan-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-cyan-500 active:scale-95 transition-all">Confirm & Unlock</button>
+           </GlassCard>
+        </div>
+      )}
+
+      {showPayModal && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 animate-in zoom-in duration-300">
+          <div className="absolute inset-0 bg-black/98 backdrop-blur-[120px]" onClick={() => setShowPayModal(false)} />
+          <GlassCard className="max-w-md w-full relative z-[700] !p-12 text-center border-cyan-500/30">
+            <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-12 text-center">Replenish <span className="text-cyan-400">Credits</span></h3>
+            <div className="space-y-4 mb-12">
+               {state.plans.map(p => (
+                 <button key={p.id} onClick={() => {
+                   if (!state.user) { setState(prev => ({...prev, currentPage: 'login'})); return; }
+                   setState(prev => ({ ...prev, user: { ...prev.user!, tokenBalance: prev.user!.tokenBalance + p.tokens } }));
+                   setShowPayModal(false);
+                 }} className="w-full p-6 bg-white/5 border border-white/10 rounded-2xl flex justify-between items-center hover:bg-white/10 transition-all shadow-inner text-left">
+                   <div>
+                     <p className="text-sm font-bold text-white uppercase italic">{p.name}</p>
+                     <p className="text-[9px] text-slate-500 uppercase mt-1">{p.tokens} Scans</p>
+                   </div>
+                   <span className="text-2xl font-black text-white">₹{p.priceINR}</span>
+                 </button>
+               ))}
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {showDeckModal && fullPrepDeck && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-2xl" onClick={() => setShowDeckModal(false)} />
+          <GlassCard className="max-w-4xl w-full h-[80vh] flex flex-col relative z-[1001] !p-0 border-indigo-500/30 shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-indigo-950/20">
+              <div className="flex items-center gap-4">
+                <Trophy className="w-6 h-6 text-indigo-400" />
+                <div className="text-left">
+                  <h3 className="text-sm font-black text-white uppercase tracking-tighter">Elite Interview Deck</h3>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Master Logic & Trap Handling</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDeckModal(false)} className="p-2 hover:text-indigo-400 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar text-left">
+              {fullPrepDeck.map((q, i) => (
+                <div key={i} className="space-y-4 animate-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms` }}>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex gap-4">
+                      <span className="text-2xl font-black text-indigo-500/30">0{i+1}</span>
+                      <h4 className="text-sm font-bold text-white italic">"{q.question}"</h4>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border ${
+                      q.type === 'Trap' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-slate-400'
+                    }`}>{q.type}</span>
+                  </div>
+                  <div className="ml-12 p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">STAR Answer Protocol</p>
+                      <p className="text-xs text-slate-300 leading-relaxed">{q.starAnswer}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Recruiter's Hidden Intent</p>
+                      <p className="text-[10px] text-slate-500 italic leading-relaxed">{q.reason}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {state.isAnalyzing && (
+        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-[160px] flex flex-col items-center justify-center space-y-12 animate-in fade-in duration-500">
+          <AdvancedVisualizer />
+          <div className="flex flex-col items-center gap-8 text-center">
+            <p className="text-3xl font-black text-white uppercase tracking-[0.4em] italic shimmer-text">Forensic Audit Active</p>
+            <div className="h-20 flex items-center justify-center w-full max-w-lg bg-slate-900/60 border border-white/20 rounded-[2rem] px-12 shadow-2xl backdrop-blur-3xl">
+               <span key={state.analysisPhase} className="text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em] animate-in scale-in duration-300 italic">
+                 {state.analysisPhase || 'Scanning Experience Nodes...'}
+               </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// --- FOOTER COMPONENT ---
+
+const Footer = ({ onAdminClick }: { onAdminClick: () => void }) => {
+  return (
+    <footer className="w-full py-12 px-6 border-t border-white/5 bg-slate-950/40 backdrop-blur-md relative z-[200]">
+      <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
+        <div className="space-y-4 text-center md:text-left">
+          <div className="flex items-center gap-2 justify-center md:justify-start">
+            <Scan className="w-4 h-4 text-cyan-400" />
+            <span className="font-black text-sm uppercase tracking-tighter text-white">RESUME <span className="text-cyan-400">CORE</span></span>
+          </div>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest max-w-xs leading-relaxed">
+            Elite AI forensic auditing for modern career tracks. Fixed points. Guaranteed calls.
+          </p>
+        </div>
+
+        <div className="flex flex-col items-center md:items-end gap-6">
+          <div className="space-y-2 text-center md:text-right">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Foundation Protocol Founder</p>
+            <p className="text-sm font-black text-white uppercase tracking-tighter">Lovish Singhal</p>
+            <p className="text-[8px] text-cyan-500/60 font-bold uppercase tracking-widest">Resume Analyzer Founder</p>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <a href="https://www.linkedin.com/in/calovishsinghal/" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all hover:scale-110 active:scale-95">
+              <Linkedin className="w-4 h-4" />
+            </a>
+            <a href="mailto:Lovishsinghal2003@gmail.com" className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all hover:scale-110 active:scale-95">
+              <Mail className="w-4 h-4" />
+            </a>
+            <a href="https://www.instagram.com/lovishsinghal0/" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all hover:scale-110 active:scale-95">
+              <Instagram className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div className="max-w-[1280px] mx-auto mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 opacity-30 hover:opacity-100 transition-opacity">
+        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.3em]">© 2025 Resume Core AI Systems. All Rights Reserved.</p>
+        <button 
+          onClick={onAdminClick}
+          className="flex items-center gap-2 text-[8px] font-bold text-slate-800 uppercase tracking-[0.3em] hover:text-red-500/80 transition-colors group"
+        >
+          <Terminal className="w-3 h-3 group-hover:animate-pulse opacity-0 group-hover:opacity-100" /> System Terminal
+        </button>
+      </div>
+    </footer>
+  );
+};
+
+// --- ENHANCED ADMIN DASHBOARD COMPONENT ---
+
+const AdminDashboard = ({ users, analysisHistory, plans, onBack, onUpdatePlans }: any) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'revenue' | 'plans'>('overview');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [isAddingPlan, setIsAddingPlan] = useState(false);
+
+  const totalRevenue = useMemo(() => {
+    return analysisHistory.length * 499;
+  }, [analysisHistory]);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((u: User) => 
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [users, searchQuery]);
+
+  const downloadCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+    ].join('\n');
+    const blob = new Blob([csvRows], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportUsers = () => {
+    const data = users.map((u: User) => ({
+      ID: u.id, Name: u.name, Email: u.email, Role: u.role, Credits: u.tokenBalance, Level: u.level, XP: u.xp, Created: new Date(u.createdAt).toLocaleDateString()
+    }));
+    downloadCSV(data, 'User_Database_Export');
+  };
+
+  const exportHistory = () => {
+    const data = analysisHistory.map((h: AnalysisResult) => ({
+      ID: h.id, User_ID: h.userId, Score: h.overallScore, ATS_Readability: h.atsReadability, Timestamp: new Date(h.timestamp).toLocaleString()
+    }));
+    downloadCSV(data, 'Analysis_History_Export');
+  };
+
+  const handleSavePlan = (plan: Plan) => {
+    let newPlans;
+    if (plans.find((p: Plan) => p.id === plan.id)) {
+      newPlans = plans.map((p: Plan) => p.id === plan.id ? plan : p);
+    } else {
+      newPlans = [...plans, plan];
+    }
+    onUpdatePlans(newPlans);
+    setEditingPlan(null);
+    setIsAddingPlan(false);
+  };
+
+  const handleDeletePlan = (id: string) => {
+    if (window.confirm("Terminate plan protocol?")) {
+      onUpdatePlans(plans.filter((p: Plan) => p.id !== id));
+    }
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto pb-20 text-left">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+           <ModuleHeader title="Sovereign Control Hub" icon={ShieldAlert} subtitle="Administrative Forensic Access" color="border-red-600" />
+           <div className="flex flex-wrap gap-1 mt-4">
+              {['overview', 'users', 'revenue', 'plans'].map((tab) => (
+                <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 border border-white/10 text-slate-500 hover:text-white'}`}>{tab}</button>
+              ))}
+           </div>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={exportUsers} className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 flex items-center gap-3 hover:bg-white/10 transition-all"><DownloadCloud className="w-4 h-4" /> Export Users</button>
+          <button onClick={onBack} className="px-5 py-3 bg-red-600/10 border border-red-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-600 hover:text-white transition-all">Exit Hub</button>
+        </div>
+      </div>
+
+      {activeTab === 'overview' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <GlassCard className="!p-8 border-red-500/10 group">
+              <div className="flex justify-between items-start mb-4">
+                <Users className="w-8 h-8 text-red-500 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg"><ArrowUpRight className="w-3 h-3" /> +12%</span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Operators</p>
+              <p className="text-4xl font-black text-white">{users.length}</p>
+            </GlassCard>
+            <GlassCard className="!p-8 border-cyan-500/10 group">
+              <div className="flex justify-between items-start mb-4">
+                <Activity className="w-8 h-8 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg"><ArrowUpRight className="w-3 h-3" /> +24%</span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Platform Scans</p>
+              <p className="text-4xl font-black text-white">{analysisHistory.length}</p>
+            </GlassCard>
+            <GlassCard className="!p-8 border-emerald-500/10 group">
+              <div className="flex justify-between items-start mb-4">
+                <DollarSign className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black text-red-500 flex items-center gap-1 bg-red-500/10 px-2 py-1 rounded-lg"><ArrowDownRight className="w-3 h-3" /> -3%</span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Gross Revenue</p>
+              <p className="text-4xl font-black text-emerald-500">{formatINR(totalRevenue)}</p>
+            </GlassCard>
+            <GlassCard className="!p-8 border-indigo-500/10 group">
+              <div className="flex justify-between items-start mb-4"><PieChart className="w-8 h-8 text-indigo-400 group-hover:scale-110 transition-transform" /></div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Conv. Rate</p>
+              <p className="text-4xl font-black text-white">4.2%</p>
+            </GlassCard>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <GlassCard className="lg:col-span-8 !p-8">
+               <div className="flex justify-between items-center mb-10"><h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] flex items-center gap-3"><LineChart className="w-4 h-4 text-cyan-500" /> Frequency (24h)</h3></div>
+               <div className="h-48 flex items-end justify-between gap-4">{[45, 67, 43, 89, 32, 56, 78, 90, 100, 45, 67, 88].map((h, i) => (<div key={i} className="flex-1 bg-gradient-to-t from-red-600/40 to-red-600 rounded-t-lg transition-all" style={{ height: `${h}%` }} />))}</div>
+            </GlassCard>
+            <GlassCard className="lg:col-span-4 !p-8">
+               <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] mb-8 flex items-center gap-3"><Server className="w-4 h-4 text-slate-500" /> Infra Health</h3>
+               <div className="space-y-6">
+                  {[{label:'Gemini Engine', val:'98%'}, {label:'DB Node 1', val:'92%'}, {label:'Gateway', val:'45%'}].map((item, idx) => (
+                    <div key={idx} className="space-y-2">
+                       <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>{item.label}</span><span className={idx === 2 ? 'text-yellow-500' : 'text-emerald-500'}>{idx === 2 ? 'Latency' : 'Nominal'}</span></div>
+                       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden"><div className={`h-full ${idx === 2 ? 'bg-yellow-500' : 'bg-emerald-500'}`} style={{ width: item.val }} /></div>
+                    </div>
+                  ))}
+               </div>
+            </GlassCard>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+           <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                 <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search operators..." className="w-full bg-slate-900 border border-white/5 rounded-xl py-4 pl-12 pr-4 text-xs text-white placeholder-slate-600 outline-none focus:border-red-500/40" />
+              </div>
+           </div>
+           <GlassCard className="!p-0 border-white/5">
+              <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                    <thead className="border-b border-white/5 bg-white/[0.02]">
+                       <tr>
+                          <th className="px-6 py-5 text-[9px] font-black text-slate-500 uppercase">Operator</th>
+                          <th className="px-6 py-5 text-[9px] font-black text-slate-500 uppercase">Contact</th>
+                          <th className="px-6 py-5 text-[9px] font-black text-slate-500 uppercase">Rank</th>
+                          <th className="px-6 py-5 text-[9px] font-black text-slate-500 uppercase">Credits</th>
+                          <th className="px-6 py-5 text-[9px] font-black text-slate-500 uppercase text-right">Actions</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.03]">
+                       {filteredUsers.map((u: User) => (
+                         <tr key={u.id} className="hover:bg-white/[0.02] group transition-colors">
+                            <td className="px-6 py-5 flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center"><UserIcon className="w-5 h-5 text-slate-400" /></div><div><p className="text-xs font-black text-white uppercase">{u.name}</p><p className="text-[9px] font-mono text-slate-600">ID: {u.id}</p></div></td>
+                            <td className="px-6 py-5"><p className="text-xs text-slate-400">{u.email}</p></td>
+                            <td className="px-6 py-5"><span className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg text-[9px] font-black uppercase">LVL {u.level}</span></td>
+                            <td className="px-6 py-5"><div className="flex items-center gap-2"><Zap className="w-3 h-3 text-cyan-400" /><span className="text-xs font-black text-white">{u.tokenBalance}</span></div></td>
+                            <td className="px-6 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity"><div className="flex justify-end gap-2"><button className="p-2 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-cyan-400"><Edit2 className="w-3.5 h-3.5" /></button><button className="p-2 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button></div></td>
+                         </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
+           </GlassCard>
+        </div>
+      )}
+
+      {activeTab === 'plans' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+           <div className="flex justify-between items-center">
+              <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] flex items-center gap-3"><LayoutDashboard className="w-4 h-4 text-cyan-500" /> Protocol Tiers</h3>
+              <button onClick={() => { setIsAddingPlan(true); setEditingPlan({ id: `p-${Date.now()}`, name: '', priceINR: 0, tokens: 0, description: '' }); }} className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-red-500">
+                <Plus className="w-4 h-4" /> New Protocol
+              </button>
+           </div>
+           {(editingPlan || isAddingPlan) && (
+              <GlassCard className="!p-8 border-red-500/20 bg-red-500/5 max-w-2xl">
+                 <h4 className="text-xs font-black text-white uppercase tracking-widest mb-6">Plan Editor</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-left">
+                    <div className="space-y-2"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">Identity</label><input type="text" value={editingPlan?.name} onChange={(e) => setEditingPlan({...editingPlan!, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-xs text-white" /></div>
+                    <div className="space-y-2"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">Price (INR)</label><input type="number" value={editingPlan?.priceINR} onChange={(e) => setEditingPlan({...editingPlan!, priceINR: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-xs text-white" /></div>
+                    <div className="space-y-2"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">Tokens</label><input type="number" value={editingPlan?.tokens} onChange={(e) => setEditingPlan({...editingPlan!, tokens: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-xs text-white" /></div>
+                    <div className="space-y-2"><label className="text-[9px] font-black text-slate-500 uppercase ml-1">Description</label><input type="text" value={editingPlan?.description} onChange={(e) => setEditingPlan({...editingPlan!, description: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-xs text-white" /></div>
+                 </div>
+                 <div className="flex gap-3"><button onClick={() => handleSavePlan(editingPlan!)} className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3"><Save className="w-4 h-4" /> Save</button><button onClick={() => { setEditingPlan(null); setIsAddingPlan(false); }} className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500">Cancel</button></div>
+              </GlassCard>
+           )}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {plans.map((plan: Plan) => (
+                <GlassCard key={plan.id} className="!p-8 border-white/5 text-left">
+                   <div className="flex justify-between items-start mb-6"><div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-cyan-400"><Zap className="w-6 h-6" /></div><div className="flex gap-2"><button onClick={() => setEditingPlan(plan)} className="p-2 bg-white/5 rounded-lg text-slate-500 hover:text-cyan-400"><Edit2 className="w-3.5 h-3.5" /></button><button onClick={() => handleDeletePlan(plan.id)} className="p-2 bg-white/5 rounded-lg text-slate-500 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button></div></div>
+                   <h4 className="text-xl font-black text-white uppercase mb-1">{plan.name}</h4>
+                   <p className="text-[10px] text-slate-500 font-bold uppercase mb-6">{plan.tokens} Scans</p>
+                   <div className="flex items-baseline gap-2 mb-6"><span className="text-3xl font-black text-white">₹{plan.priceINR}</span></div>
+                   <p className="text-xs text-slate-400 italic mb-8 border-l-2 border-white/5 pl-4">{plan.description}</p>
+                </GlassCard>
+              ))}
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const LoginPage = ({ onLogin }: { onLogin: (user: any) => void }) => {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !name) return;
+    onLogin({ id: Math.random().toString(36).substr(2, 9), name, email, picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`, role: 'user', isBlocked: false, suspiciousActivity: false, createdAt: Date.now(), tokenBalance: 5, xp: 0, level: 1, badges: [], completedTasks: [] });
+  };
+  return (
+    <div className="max-w-md mx-auto mt-20 p-8 glass-panel rounded-[2rem] border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
+      <div className="text-center mb-8"><div className="w-16 h-16 bg-cyan-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4"><UserIcon className="w-8 h-8 text-cyan-400" /></div><h2 className="text-2xl font-black text-white uppercase">Login</h2><p className="text-[10px] text-slate-500 font-bold uppercase">Forensic career intelligence</p></div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label><input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-sm text-white" /></div>
+        <div className="space-y-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-sm text-white" /></div>
+        <button type="submit" className="w-full py-4 bg-cyan-600 text-white rounded-xl text-[10px] font-black uppercase shadow-xl">Establish Session</button>
+      </form>
+    </div>
+  );
+};
+
+const AdminLoginPage = ({ onAdminAuth }: { onAdminAuth: (success: boolean) => void }) => {
+  const [passkey, setPasskey] = useState('');
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onAdminAuth(passkey === 'admin123'); };
+  return (
+    <div className="max-w-md mx-auto mt-20 p-8 glass-panel rounded-[2rem] border border-red-500/20 animate-in fade-in text-left">
+      <div className="text-center mb-8"><div className="w-16 h-16 bg-red-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4"><ShieldAlert className="w-8 h-8 text-red-500" /></div><h2 className="text-2xl font-black text-white uppercase">Sovereign Login</h2><p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Authorized Only</p></div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Admin Passkey</label><input type="password" required value={passkey} onChange={e => setPasskey(e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-sm text-white" /></div>
+        <button type="submit" className="w-full py-4 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase">Verify Authority</button>
+      </form>
+    </div>
+  );
+};

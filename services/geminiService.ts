@@ -1,6 +1,11 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Industry, Region } from "../types";
 
+/**
+ * Service to handle resume analysis using Gemini 3 Flash.
+ * Conducts a forensic audit of the resume against industry benchmarks or job descriptions.
+ */
 export const analyzeResume = async (
   base64File: string, 
   mimeType: string, 
@@ -9,6 +14,7 @@ export const analyzeResume = async (
   jobDescription: string,
   onProgress: (phase: string) => void
 ) => {
+  // Always initialize GoogleGenAI with a named parameter using process.env.API_KEY
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   onProgress("Initializing Forensic Audit Engine...");
   
@@ -29,9 +35,13 @@ export const analyzeResume = async (
           MANDATORY REQUIREMENTS:
           1. Be brutally honest. Sound like a corporate recruiter or managing director.
           2. Conduct a forensic audit of all experience bullets.
-          3. Generate an 'idealResumeContent' which is a full, ready-to-use version of the resume. Include a summary, all experience items with optimized bullets, education, and skills.
-          4. Evaluate the 'resumeIQ' based on content quality, ATS safety, and narrative strength.
-          5. Return the response in the specified JSON schema.`
+          3. Generate an 'idealResumeContent' which is a full, ready-to-use version of the resume. Include a summary, all experience items with optimized bullets, education, and skills. 
+          4. IMPORTANT: In 'idealResumeContent', ensure 'contact' is detailed (Phone, Email, LinkedIn, Portfolio/Website if found).
+          5. Evaluate the 'resumeIQ' based on content quality, ATS safety, and narrative strength.
+          6. Generate 5 high-stakes interview questions with STAR-format answer guides in 'interviewIntelligence'.
+          7. Identify SPECIFIC issues (formatting, logic, gaps) and provide 'recruiterTips'. 
+             - EACH TIP MUST include: 'issue' (what is wrong), 'rectification' (how exactly to fix it), 'impact' (Low/Moderate/High).
+          8. Return the response in the specified JSON schema.`
         }
       ]
     },
@@ -60,7 +70,8 @@ export const analyzeResume = async (
               type: Type.OBJECT,
               properties: {
                 type: { type: Type.STRING },
-                content: { type: Type.STRING },
+                issue: { type: Type.STRING },
+                rectification: { type: Type.STRING },
                 impact: { type: Type.STRING }
               }
             }
@@ -70,12 +81,15 @@ export const analyzeResume = async (
             properties: {
               name: { type: Type.STRING },
               contact: { type: Type.STRING },
+              phone: { type: Type.STRING },
+              links: { type: Type.ARRAY, items: { type: Type.STRING } },
               education: { type: Type.ARRAY, items: { type: Type.STRING } },
               experience: { type: Type.ARRAY, items: { type: Type.STRING } },
               skills: { type: Type.ARRAY, items: { type: Type.STRING } },
               certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
               projects: { type: Type.ARRAY, items: { type: Type.STRING } },
-              missingFields: { type: Type.ARRAY, items: { type: Type.STRING } }
+              missingFields: { type: Type.ARRAY, items: { type: Type.STRING } },
+              ambiguousData: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
           },
           bulletCritiques: {
@@ -106,7 +120,8 @@ export const analyzeResume = async (
             type: Type.OBJECT,
             properties: {
               level: { type: Type.STRING },
-              justification: { type: Type.STRING }
+              justification: { type: Type.STRING },
+              interviewResponse: { type: Type.STRING }
             }
           },
           verdict: {
@@ -123,10 +138,18 @@ export const analyzeResume = async (
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
+              properties: { section: { type: Type.STRING }, attentionScore: { type: Type.NUMBER }, feedback: { type: Type.STRING } }
+            }
+          },
+          interviewIntelligence: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
               properties: {
-                section: { type: Type.STRING },
-                attentionScore: { type: Type.NUMBER },
-                feedback: { type: Type.STRING }
+                question: { type: Type.STRING },
+                type: { type: Type.STRING },
+                starAnswer: { type: Type.STRING },
+                reason: { type: Type.STRING }
               }
             }
           },
@@ -186,49 +209,76 @@ export const analyzeResume = async (
     }
   });
 
-  return JSON.parse(response.text);
+  // Extract text property directly, do not call as a method
+  return JSON.parse(response.text || "{}");
 };
 
-export function encodePCM(data: Float32Array): string {
-  const l = data.length;
-  const int16 = new Int16Array(l);
-  for (let i = 0; i < l; i++) {
-    int16[i] = data[i] * 32768;
-  }
-  let binary = '';
-  const bytes = new Uint8Array(int16.buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-export function decodeBase64Audio(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-export async function decodeAudioBuffer(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+/**
+ * Generates a full interview preparation deck (15-20 questions).
+ */
+export const generateFullPrepDeck = async (
+  resumeSummary: string,
+  industry: Industry,
+  jobDescription: string
+) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `You are an elite Executive Interview Coach. 
+    Based on the following candidate profile and target JD, generate a MASTER INTERVIEW PREP DECK.
+    
+    Candidate Summary: ${resumeSummary}
+    Industry: ${industry}
+    Target JD: ${jobDescription || "Standard Industry Level"}
+    
+    Generate exactly 15 high-impact questions categorized into:
+    - Behavioral (testing leadership, teamwork, conflict)
+    - Technical (testing specific industry skills and tools)
+    - Situational (scenario-based challenges)
+    - Trap (common recruiter tricks to test pressure or honesty)
+    
+    Each question must have a 'starAnswer' guide and a 'reason' for why this is asked.
+    
+    Return as JSON array of objects with keys: question, type, starAnswer, reason.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            type: { type: Type.STRING },
+            starAnswer: { type: Type.STRING },
+            reason: { type: Type.STRING }
+          },
+          required: ["question", "type", "starAnswer", "reason"]
+        }
+      }
     }
-  }
-  return buffer;
-}
+  });
+
+  return JSON.parse(response.text || "[]");
+};
+
+/**
+ * Assistant to handle career-related chat queries.
+ */
+export const chatWithAssistant = async (
+  message: string,
+  history: { role: 'user' | 'model'; parts: { text: string }[] }[]
+) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    // Always provide the full conversation history to maintain context
+    contents: [...history, { role: 'user', parts: [{ text: message }] }],
+    config: {
+      systemInstruction: "You are 'Core Assistant', a career AI designed to help users optimize their resumes and prepare for high-stakes interviews. Be professional, concise, and insightful.",
+    },
+  });
+
+  // Access .text property directly
+  return response.text || "I'm sorry, I couldn't process that request.";
+};
